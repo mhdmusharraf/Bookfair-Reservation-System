@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+.badge {
+  @apply text-[10px] px-1 py-0.5 rounded;
+}
