@@ -1,0 +1,36 @@
+import React from "react";
+import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
+import { Outlet, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
+export default function Shell() {
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <AppBar position="sticky" color="default" elevation={1}>
+        <Toolbar className="flex gap-4">
+          <Typography variant="h6" className="font-bold">CIBF Vendor Portal</Typography>
+          <Button component={Link} to="/" color="inherit">Dashboard</Button>
+          <Button component={Link} to="/reserved" color="inherit">Reserved Stalls</Button>
+          <Box className="ml-auto flex items-center gap-4">
+            {user && (
+              <>
+                <Typography variant="body2" className="hidden sm:block">
+                  {user.businessName} — {user.email}
+                </Typography>
+                <Button variant="outlined" size="small" onClick={()=>{ logout(); nav("/login"); }}>
+                  Logout
+                </Button>
+              </>
+            )}
+          </Box>
+        </Toolbar>
+      </AppBar>
+      <Box className="p-4 max-w-6xl mx-auto w-full">
+        <Outlet/>
+      </Box>
+    </Box>
+  );
+}
