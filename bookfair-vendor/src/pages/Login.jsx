@@ -13,14 +13,16 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true); setErr("");
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true); 
+    setErr("");
     try {
       const { data } = await apiLogin({ email, password });
       login(data.token, data.user);
       nav("/");
-    } catch (e) {
+    } catch (err) {
+      console.log(err);
       setErr("Invalid credentials");
     } finally {
       setLoading(false);
@@ -29,15 +31,53 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <Paper className="p-6 w-full max-w-md">
-        <Typography variant="h5" className="font-bold mb-4">Login</Typography>
+      <Paper className="p-6 w-full max-w-sm flex flex-col">
+        <Typography
+          variant="h5"
+          className="mb-4 flex justify-center"
+          sx={{ marginBottom: 4, fontWeight: "bold" }}
+        >
+          Login
+        </Typography>
         <form onSubmit={onSubmit} className="space-y-3">
-          <TextField fullWidth label="Email" value={email} onChange={e=>setEmail(e.target.value)} />
-          <TextField fullWidth label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} />
-          {err && <Typography color="error" variant="body2">{err}</Typography>}
-          <Stack direction="row" spacing={2}>
-            <Button type="submit" variant="contained" disabled={loading}>Login</Button>
-            <Button component={Link} to="/signup">Signup</Button>
+          <TextField
+            fullWidth
+            size="small"
+            label="Email"
+            sx={{ marginBottom: 2 }}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            size="small"
+            label="Password"
+            sx={{ marginBottom: 2 }}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {err && (
+            <Typography color="error" variant="body2">
+              {err}
+            </Typography>
+          )}
+          <Stack direction="column" spacing={2}>
+            <Button
+              type="submit"
+              variant="contained"
+              sx={{ textTransform: "none" }}
+              disabled={loading}
+            >
+              Login
+            </Button>
+            <Button
+              component={Link}
+              to="/signup"
+              sx={{ textTransform: "none" }}
+            >
+              Don't have an account? Signup
+            </Button>
           </Stack>
         </form>
       </Paper>
