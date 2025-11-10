@@ -36,14 +36,24 @@ export async function fetchStalls() {
   return { data };
 }
 
-export async function reserveStalls({ stallIds, genres }) {
+export async function reserveStalls({ stallIds, userEmail }) {
   if (!api.defaults.baseURL) {
     stallIds.forEach(id=>{
       const s = mockStalls.find(x=>x.id===id);
-      if (s) { s.status = "BOOKED"; s.reservedBy = "current@vendor.com"; }
+      if (s) { s.status = "BOOKED"; s.reservedBy = userEmail; }
     });
-    return { data: { success: true, reserved: stallIds, genres, qrUrl: "https://example.com/qr.png" } };
+    return { data: { success: true, reserved: stallIds, qrUrl: "https://example.com/qr.png" } };
   }
-  const { data } = await api.post("/stalls/reserve", { stallIds, genres });
+  const { data } = await api.post("/stalls/reserve", { stallIds });
+  return { data };
+}
+
+export async function saveGenres({ genres }) {
+ if (!api.defaults.baseURL) {
+    // Mock success
+    console.log("Mock API: Saved genres", genres);
+    return { data: { success: true, genres } };
+  }
+  const { data } = await api.post("/stalls/genres", { genres });
   return { data };
 }
