@@ -28,6 +28,14 @@ export default function Shell() {
             color="inherit"
             sx={{ textTransform: "none" }}
           >
+            Join Requests
+          </Button>
+          <Button
+            component={Link}
+            to="/reserved"
+            color="inherit"
+            sx={{ textTransform: "none" }}
+          >
             Reserved Stalls
           </Button>
           <Box className="ml-auto flex items-center gap-4">

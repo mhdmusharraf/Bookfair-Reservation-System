@@ -1,6 +1,6 @@
 import React from "react";
 import { useEffect, useState } from "react";
-import { Paper, Typography, Button, Snackbar, Alert, Divider, Stack } from "@mui/material";
+import { Paper, Typography, Button, Snackbar, Alert, Divider, Stack, Box, List, ListItem, Checkbox, ListItemButton, ListItemAvatar, Avatar, ListItemText } from "@mui/material";
 import StallMap from "../components/StallMap";
 import StallLegend from "../components/StallLegend";
 import { fetchStalls } from "../api/stalls";
@@ -13,6 +13,25 @@ export default function Dashboard() {
   // const [warn, setWarn] = useState("");
   // const [info, setInfo] = useState("");
   const { user } = useAuth();
+
+  const [checked, setChecked] = useState([1]);
+
+  const handleToggle = (value) => () => {
+    const currentIndex = checked.indexOf(value);
+    const newChecked = [...checked];
+
+    if (currentIndex === -1) {
+      newChecked.push(value);
+    } else {
+      newChecked.splice(currentIndex, 1);
+    }
+
+    setChecked(newChecked);
+  };
+
+  const handleRequestClick = () => {
+    alert("Stall request clicked");
+  }
 
   useEffect(()=> {
     (async ()=>{
@@ -39,14 +58,16 @@ export default function Dashboard() {
 
 
   return (
-    <div className="space-y-4">
-      <Paper className="p-4">
+    <div className="space-y-4 flex flex-row w-full gap-4 bg-black">
+      <Paper className="p-4 w-3/5">
         <div className="flex items-center justify-between">
-          <Typography variant="h6" className="font-bold">Stall Map</Typography>
+          <Typography variant="h6" className="font-bold">
+            Stall Map
+          </Typography>
           <StallLegend />
         </div>
-        <Divider className="my-3"/>
-        <div className="grid md:grid-cols-3 gap-6">
+        <Divider className="my-3" />
+        <div className="grid md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
             <StallMap
               stalls={stalls}
@@ -59,16 +80,47 @@ export default function Dashboard() {
         </div>
       </Paper>
 
-      <Paper className="p-4">
-        <Typography variant="subtitle1" className="font-semibold mb-2">Reserved Stalls (quick view)</Typography>
-        <div className="flex flex-wrap gap-2">
-          {stalls.filter(s=>s.status==="BOOKED" && s.reservedBy===user?.email).map(s=>(
-            <span key={s.id} className="badge bg-red-500 text-white">{s.code}</span>
-          ))}
-          {stalls.filter(s=>s.status==="BOOKED" && s.reservedBy===user?.email).length === 0 && (
-            <Typography variant="body2" color="text.secondary">No stalls reserved yet.</Typography>
-          )}
-        </div>
+      <Paper className="p-4 w-2/5">
+        <Typography variant="subtitle1" className="font-semibold mb-2">
+          Stall Requests
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <List
+            dense
+            sx={{ width: "100%", maxWidth: 360, bgcolor: "background.paper" }}
+          >
+            {[0, 1, 2, 3].map((value) => {
+              const labelId = `checkbox-list-secondary-label-${value}`;
+              return (
+                <ListItem
+                  key={value}
+                  secondaryAction={
+                    <Checkbox
+                      edge="end"
+                      onChange={handleToggle(value)}
+                      checked={checked.includes(value)}
+                      inputProps={{ "aria-labelledby": labelId }}
+                    />
+                  }
+                  disablePadding
+                >
+                  <ListItemButton onClick={handleRequestClick}>
+                    <ListItemAvatar>
+                      <Avatar
+                        alt={`Avatar n°${value + 1}`}
+                        src={`/static/images/avatar/${value + 1}.jpg`}
+                      />
+                    </ListItemAvatar>
+                    <ListItemText
+                      id={labelId}
+                      primary={`Line item ${value + 1}`}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box>
       </Paper>
 
       {/* <Snackbar open={!!warn} autoHideDuration={3000} onClose={()=>setWarn("")}>
