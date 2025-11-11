@@ -59,7 +59,7 @@ export default function Shell() {
           </Box>
         </Toolbar>
       </AppBar>
-      <Box className="p-4 max-w-6xl mx-auto w-full">
+      <Box className="p-4 mx-auto w-full">
         <Outlet />
       </Box>
     </Box>
