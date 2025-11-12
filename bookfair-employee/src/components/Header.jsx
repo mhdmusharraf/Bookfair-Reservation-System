@@ -3,7 +3,7 @@ import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Shell() {
+export default function Header() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
@@ -24,7 +24,7 @@ export default function Shell() {
           </Button>
           <Button
             component={Link}
-            to="/reserved"
+            to="/join-requests"
             color="inherit"
             sx={{ textTransform: "none" }}
           >
@@ -32,11 +32,11 @@ export default function Shell() {
           </Button>
           <Button
             component={Link}
-            to="/reserved"
+            to="/registered-businesses"
             color="inherit"
             sx={{ textTransform: "none" }}
           >
-            Reserved Stalls
+            Registered Businesses
           </Button>
           <Box className="ml-auto flex items-center gap-4">
             {user && (
