@@ -10,7 +10,8 @@ const HALL_DEFS = [
   ["N", 8],  ["P", 5],  ["Q", 5],
 ];
 
-export const GENRE_OPTIONS = ["Stationary", "IT", "Hardware"];
+// Added more genres
+export const GENRE_OPTIONS = ["Stationary", "IT", "Hardware", "Fiction", "Non-Fiction", "Sci-Fi", "Fantasy", "Biography", "Children's", "Education", "Comics", "History"];
 
 /** Round-robin assignment of sizes to hit the quotas without clumping */
 function sizeAllocator() {
@@ -44,7 +45,7 @@ function buildMockStallsByHall() {
         id: `${hall}-${String(n).padStart(2, "0")}`,
         code: `${hall}-${String(n).padStart(2, "0")}`, // matches SVG top label
         hall,
-        size,                            // "SMALL" | "MEDIUM" | "LARGE"
+        size,                        // "SMALL" | "MEDIUM" | "LARGE"
         status: "AVAILABLE",
         reservedBy: null,
       });
@@ -70,14 +71,29 @@ export async function fetchStalls() {
   return { data };
 }
 
-export async function reserveStalls({ stallIds, genres }) {
+// ADD TO CART" FLOW 
+
+export async function reserveStalls({ reservations, userEmail }) {
   if (!api.defaults.baseURL) {
-    stallIds.forEach(id => {
-      const s = mockStalls.find(x => x.id === id);
-      if (s) { s.status = "BOOKED"; s.reservedBy = "current@vendor.com"; }
+    // Mock API logic
+    const reservedIds = [];
+    
+    // Cleaned up the loop:
+    reservations.forEach(res => {
+      const s = mockStalls.find(x => x.id === res.stallId);
+      if (s) {
+        s.status = "BOOKED";
+        s.reservedBy = userEmail; // Use the email for correct filtering
+        // We would also save `res.genres` in a real DB
+        console.log(`Mock: Reserving ${s.id} for ${userEmail} with genres: ${res.genres.join(', ')}`);
+        reservedIds.push(s.id);
+      }
     });
-    return { data: { success: true, reserved: stallIds, genres, qrUrl: "https://example.com/qr.png" } };
+    
+    return { data: { success: true, reserved: reservedIds, qrUrl: "https://example.com/qr.png" } };
   }
-  const { data } = await api.post("/stalls/reserve", { stallIds, genres });
+  
+  // Real API call
+  const { data } = await api.post("/stalls/reserve", { reservations });
   return { data };
 }
