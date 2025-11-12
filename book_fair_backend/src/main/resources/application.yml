@@ -15,6 +15,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
 
   flyway:
     enabled: true
@@ -27,6 +28,7 @@ spring:
     port: 587
     username:
     password:
+    from: no-reply@bookfair.lk
     properties:
       mail:
         smtp:
@@ -34,5 +36,14 @@ spring:
           starttls:
             enable: true
 
+security:
+  jwt:
+    secret: c2VjdXJlLXNlY3JldC1rZXktcGxlYXNlLXJlcGxhY2Utd2l0aC1vd24=
+    expiration-minutes: 120
+
 server:
   port: 8080
+
+logging:
+  level:
+    com.bookfair: INFO
