@@ -16,7 +16,7 @@ public class RegisterRequest {
 
     @Schema(example = "0112345678")
     @NotBlank(message = "Contact number is required")
-    @Pattern(regexp = "^[0-9+\-]{7,15}$", message = "Invalid contact number")
+    @Pattern(regexp = "^[0-9+\\-]{7,15}$", message = "Invalid contact number")
     private String contactNumber;
 
     @Schema(example = "info@bookco.lk")
