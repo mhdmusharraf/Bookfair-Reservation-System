@@ -1,17 +1,12 @@
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Paper,
   Typography,
   Button,
-  Snackbar,
-  Alert,
   Divider,
-  Stack,
   Box,
   List,
   ListItem,
-  Checkbox,
   ListItemButton,
   ListItemAvatar,
   Avatar,
@@ -20,21 +15,22 @@ import {
   IconButton,
   Modal,
 } from "@mui/material";
-import StallMap from "../components/StallMap";
 import StallLegend from "../components/StallLegend";
-import { fetchStalls } from "../api/stalls";
-// import { useAuth } from "../context/AuthContext";
-import dummyRequests from "../data/dummyRequests.js";
+// import { fetchStalls } from "../api/stalls";
+import dummyRequests from "../data/dummyRequests";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import CheckIcon from "@mui/icons-material/Check";
 import CancelIcon from "@mui/icons-material/Cancel";
+import StallSvgMap from "../components/StallSvgMap";
+import dummyStalls from "../data/dummyStalls.js"
+
 
 export default function Dashboard() {
-  const [stalls, setStalls] = useState([]);
-  const [sizeFilter, setSizeFilter] = useState("ALL");
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const [stalls, setStalls] = useState([]);
+  const [selectedStall, setSelectedStall] = useState(null);
+
   const openRequestDetails = (request) => {
     setSelectedRequest(request);
     setOpen(true);
@@ -44,24 +40,6 @@ export default function Dashboard() {
     setSelectedRequest(null);
     setOpen(false);
   };
-  // const [warn, setWarn] = useState("");
-  // const [info, setInfo] = useState("");
-  // const { user } = useAuth();
-
-  // const [checked, setChecked] = useState([1]);
-
-  // const handleToggle = (value) => () => {
-  //   const currentIndex = checked.indexOf(value);
-  //   const newChecked = [...checked];
-
-  //   if (currentIndex === -1) {
-  //     newChecked.push(value);
-  //   } else {
-  //     newChecked.splice(currentIndex, 1);
-  //   }
-
-  //   setChecked(newChecked);
-  // };
 
   const requestModelStyle = {
     position: "absolute",
@@ -75,30 +53,28 @@ export default function Dashboard() {
     p: 4,
   };
 
+  // useEffect(() => {
+  //   const loadStalls = async () => {
+  //     try {
+  //       const { data } = await fetchStalls();
+  //       setStalls(data || []);
+  //     } catch (error) {
+  //       console.error("Error fetching stalls:", error);
+  //     }
+  //   };
+  //   loadStalls();
+  // }, []);
+
   useEffect(() => {
-    (async () => {
-      const { data } = await fetchStalls();
-      setStalls(data);
-    })();
+    // Mocking API call
+    setTimeout(() => {
+      setStalls(dummyStalls);
+    }, 500); // simulates loading delay
   }, []);
 
-  // const toggleStall = (stall) => {
-  //   // booked stalls already disabled
-  //   const next = new Set(selectedIds);
-  //   if (next.has(stall.id)) {
-  //     next.delete(stall.id);
-  //   } else {
-  //     if (next.size >= 3) {
-  //       setWarn("Maximum 3 stalls can be selected per business.");
-  //       return;
-  //     }
-  //     next.add(stall.id);
-  //   }
-  //   setSelectedIds(next);
-  // };
-
   return (
-    <div className="space-y-4 flex flex-row w-full gap-4 bg-black">
+    <div className="flex flex-row w-full gap-4 bg-gray-50 p-4">
+      {/* Stall Map Section */}
       <Paper className="p-4 w-3/5">
         <div className="flex items-center justify-between">
           <Typography variant="h6" className="font-bold">
@@ -109,17 +85,33 @@ export default function Dashboard() {
         <Divider className="my-3" />
         <div className="grid md:grid-cols-2 gap-6">
           <div className="md:col-span-2">
-            <StallMap
+            <StallSvgMap
               stalls={stalls}
-              sizeFilter={sizeFilter}
-              onSizeChange={setSizeFilter}
-              selectedIds={selectedIds}
-              // onToggle={toggleStall}
+              onSelect={(stall) => setSelectedStall(stall)}
             />
           </div>
         </div>
       </Paper>
 
+      {/* Stall Details Section */}
+      {selectedStall && (
+        <Paper className="p-4 w-1/5">
+          <Typography variant="h6" className="font-bold mb-2">
+            Stall Details
+          </Typography>
+          <Typography variant="subtitle1">
+            <strong>Stall Code:</strong> {selectedStall.code}
+          </Typography>
+          <Typography variant="subtitle1">
+            <strong>Size:</strong> {selectedStall.size}
+          </Typography>
+          <Typography variant="subtitle1">
+            <strong>Status:</strong> {selectedStall.status}
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Stall Requests Section */}
       <Paper className="p-4 w-2/5">
         <Typography variant="subtitle1" className="font-semibold mb-2">
           Stall Requests
@@ -136,12 +128,12 @@ export default function Dashboard() {
                   key={request.id}
                   secondaryAction={
                     <Box>
-                      <Tooltip title="View Reciept">
-                        <IconButton>
+                      <Tooltip title="View Receipt">
+                        <IconButton onClick={() => openRequestDetails(request)}>
                           <ReceiptIcon sx={{ color: "blue" }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Conform Request">
+                      <Tooltip title="Confirm Request">
                         <IconButton>
                           <CheckIcon sx={{ color: "green" }} />
                         </IconButton>
@@ -155,12 +147,6 @@ export default function Dashboard() {
                   }
                   disablePadding
                 >
-                  {/* <Checkbox
-                    edge="end"
-                    onChange={handleToggle(request.id)}
-                    checked={checked.includes(request.id)}
-                    inputProps={{ "aria-labelledby": labelId }}
-                  /> */}
                   <ListItemButton onClick={() => openRequestDetails(request)}>
                     <ListItemAvatar>
                       <Avatar
@@ -183,11 +169,12 @@ export default function Dashboard() {
         </Box>
       </Paper>
 
+      {/* Modal for Request Details */}
       <Modal open={open} onClose={closeRequestDetails}>
         <Box sx={requestModelStyle}>
           {selectedRequest && (
             <>
-              <Box sx={{display:"flex", justifyContent:"space-between"}}>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Box>
                   <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
                     {selectedRequest.businessName}
@@ -205,12 +192,13 @@ export default function Dashboard() {
                     Date: {selectedRequest.date || "N/A"}
                   </Typography>
                 </Box>
-                <Tooltip title="View Reciept">
-                  <IconButton sx={{marginRight:10}}>
-                    <ReceiptIcon sx={{ color: "blue", fontSize:48 }} />
+                <Tooltip title="View Receipt">
+                  <IconButton sx={{ marginRight: 2 }}>
+                    <ReceiptIcon sx={{ color: "blue", fontSize: 40 }} />
                   </IconButton>
                 </Tooltip>
               </Box>
+
               <Box
                 sx={{
                   width: "100%",
