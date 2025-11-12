@@ -1,35 +1,69 @@
 import { api } from "./client";
 
-const GENRES = ["Stationary", "IT", "Hardware"];
-export const GENRE_OPTIONS = GENRES;
+/** Keep sizes to this distribution */
+const SIZE_QUOTAS = { SMALL: 60, MEDIUM: 50, LARGE: 40 }; // total 150
 
-// Build deterministic 150-stall mock (50 S/M/L)
-function buildMockStalls() {
-  const arr = [];
-  const make = (prefix, count, size) => {
-    for (let i = 1; i <= count; i++) {
-      arr.push({
-        id: `${prefix}${String(i).padStart(2,"0")}`,
-        code: `${prefix}${String(i).padStart(2,"0")}`,
-        size,
+/** Same hall order and capacities as StallSvgMap.jsx */
+const HALL_DEFS = [
+  ["A", 24], ["B", 24], ["C", 12], ["D", 12], ["H", 20],
+  ["J", 10], ["K", 10], ["R", 8],  ["L", 6],  ["M", 6],
+  ["N", 8],  ["P", 5],  ["Q", 5],
+];
+
+export const GENRE_OPTIONS = ["Stationary", "IT", "Hardware"];
+
+/** Round-robin assignment of sizes to hit the quotas without clumping */
+function sizeAllocator() {
+  const order = ["SMALL", "MEDIUM", "LARGE"];
+  const remaining = { ...SIZE_QUOTAS };
+  let i = 0;
+
+  return function nextSize() {
+    // pick the next available size in round-robin that still has remaining quota
+    for (let k = 0; k < order.length; k++) {
+      const s = order[(i + k) % order.length];
+      if (remaining[s] > 0) {
+        remaining[s]--;
+        i = (i + k + 1) % order.length;
+        return s;
+      }
+    }
+    // Fallback (should not happen)
+    return "SMALL";
+  };
+}
+
+function buildMockStallsByHall() {
+  const stalls = [];
+  const nextSize = sizeAllocator();
+
+  HALL_DEFS.forEach(([hall, capacity]) => {
+    for (let n = 1; n <= capacity; n++) {
+      const size = nextSize();
+      stalls.push({
+        id: `${hall}-${String(n).padStart(2, "0")}`,
+        code: `${hall}-${String(n).padStart(2, "0")}`, // matches SVG top label
+        hall,
+        size,                            // "SMALL" | "MEDIUM" | "LARGE"
         status: "AVAILABLE",
         reservedBy: null,
       });
     }
-  };
-  make("S-",50,"SMALL"); make("M-",50,"MEDIUM"); make("L-",50,"LARGE");
-  // Pretend a few are already booked
-  ["S-03","M-12","L-07","L-08"].forEach(id=>{
-    const s = arr.find(x=>x.id===id);
-    if (s) { s.status="BOOKED"; s.reservedBy="other@publisher.com"; }
   });
-  return arr;
+
+  // Pre-book a few for realism
+  ["A-03", "B-12", "H-07", "D-05"].forEach(id => {
+    const s = stalls.find(x => x.id === id);
+    if (s) { s.status = "BOOKED"; s.reservedBy = "other@publisher.com"; }
+  });
+
+  return stalls;
 }
-const mockStalls = buildMockStalls();
+
+const mockStalls = buildMockStallsByHall();
 
 export async function fetchStalls() {
   if (!api.defaults.baseURL) {
-    // mock fetch
     return { data: mockStalls };
   }
   const { data } = await api.get("/stalls");
@@ -38,8 +72,8 @@ export async function fetchStalls() {
 
 export async function reserveStalls({ stallIds, genres }) {
   if (!api.defaults.baseURL) {
-    stallIds.forEach(id=>{
-      const s = mockStalls.find(x=>x.id===id);
+    stallIds.forEach(id => {
+      const s = mockStalls.find(x => x.id === id);
       if (s) { s.status = "BOOKED"; s.reservedBy = "current@vendor.com"; }
     });
     return { data: { success: true, reserved: stallIds, genres, qrUrl: "https://example.com/qr.png" } };
