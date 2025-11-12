@@ -5,6 +5,8 @@ import {
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, CircularProgress
 } from "@mui/material";
 import StallMap from "../components/StallMap";
+import { Paper, Typography, Button, Snackbar, Alert, Divider, Stack } from "@mui/material";
+import StallSvgMap from "../components/StallSvgMap";
 import StallLegend from "../components/StallLegend";
 import GenreSelector from "../components/GenreSelector";
 import { fetchStalls, reserveStalls, saveGenres } from "../api/stalls";
@@ -105,10 +107,8 @@ export default function Dashboard() {
         <Divider className="my-3"/>
         <div className="grid md:grid-cols-3 gap-6">
           <div className="md:col-span-2">
-            <StallMap
+            <StallSvgMap
               stalls={stalls}
-              sizeFilter={sizeFilter}
-              onSizeChange={setSizeFilter}
               selectedIds={selectedIds}
               onToggle={toggleStall}
             />
