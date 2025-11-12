@@ -9,7 +9,7 @@ import com.bookfair.reservation.entity.Reservation;
 import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.stall.entity.Stall;
 import com.bookfair.stall.repository.StallRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -77,6 +77,7 @@ public class ReservationService {
         return toResponse(savedReservation);
     }
 
+    @Transactional(readOnly = true)
     public List<ReservationResponse> getReservationsForUser(User user) {
         return reservationRepository.findByUser(user).stream()
                 .sorted(Comparator.comparing(Reservation::getReservedAt).reversed())
@@ -84,6 +85,7 @@ public class ReservationService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ReservationResponse> getAllReservations() {
         return reservationRepository.findAll().stream()
                 .sorted(Comparator.comparing(Reservation::getReservedAt).reversed())
