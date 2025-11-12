@@ -4,9 +4,10 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AcceptInvite from "./pages/AcceptInvite";
 import Dashboard from "./pages/Dashboard";
-import Reserved from "./pages/Reserved";
+import JoinRequests from "./pages/JoinRequests";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Shell from "./components/Shell";
+import Header from "./components/Header";
+import RegisteredBusinesses from "./pages/RegisteredBusinesses";
 
 function Protected({ children }) {
   const { token } = useAuth();
@@ -17,14 +18,36 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<Login/>}/>
-        <Route path="/signup" element={<Signup/>}/>
-        <Route path="/accept-invite/:token" element={<AcceptInvite/>}/>
-        <Route element={<Shell/>}>
-          <Route path="/" element={<Protected><Dashboard/></Protected>} />
-          <Route path="/reserved" element={<Protected><Reserved/></Protected>} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+        <Route element={<Header />}>
+          <Route
+            path="/"
+            element={
+              <Protected>
+                <Dashboard />
+              </Protected>
+            }
+          />
+          <Route
+            path="/join-requests"
+            element={
+              <Protected>
+                <JoinRequests />
+              </Protected>
+            }
+          />
+          <Route
+            path="/registered-businesses"
+            element={
+              <Protected>
+                <RegisteredBusinesses/>
+              </Protected>
+            }
+          />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace/>}/>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );
