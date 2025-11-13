@@ -1,6 +1,7 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { fetchStalls } from "../api/stalls";
+import { fetchMyReservedStallCodes } from "../api/reservations";
 import { Paper, Typography, Divider } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,11 +9,35 @@ export default function Reserved() {
   const [stalls, setStalls] = useState([]);
   const { user } = useAuth();
 
-  useEffect(()=> {
-    (async ()=> {
+  useEffect(() => {
+    let active = true;
+
+    (async () => {
       const { data } = await fetchStalls();
-      setStalls(data.filter(s=>s.status==="BOOKED" && s.reservedBy===user?.email));
+      if (!active) return;
+
+      const email = user?.email;
+      if (!email) {
+        setStalls([]);
+        return;
+      }
+
+      try {
+        const { data: codes } = await fetchMyReservedStallCodes(email, data);
+        if (!active) return;
+
+        const lookup = new Set(codes);
+        setStalls(data.filter(stall => lookup.has(stall.code ?? stall.id)));
+      } catch (err) {
+        console.error("Failed to load reserved stalls", err);
+        if (!active) return;
+        setStalls([]);
+      }
     })();
+
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   return (
@@ -30,7 +55,7 @@ export default function Reserved() {
                 <span className="badge bg-red-500 text-white">Booked</span>
               </div>
               <div className="text-xs text-gray-600 mt-1">Size: {s.size}</div>
-              <div className="text-xs text-gray-600">Reserved by: {s.reservedBy}</div>
+              <div className="text-xs text-gray-600">Reserved by: {s.reservedBy ?? user?.email ?? "You"}</div>
             </div>
           ))}
         </div>
