@@ -401,7 +401,7 @@ export default function StallSvgMap({ stalls, selectedIds, onToggle }) {
             const p = positions[i];
             if (!p) return null;
 
-            const isBooked   = stall.status === "BOOKED";
+            const isBooked   = Boolean(stall.reserved);
             const isSelected = selectedIds.has(stall.id);
             const fill = isBooked ? COLORS.BOOKED : (isSelected ? COLORS.IN_PROGRESS : COLORS.AVAILABLE);
 

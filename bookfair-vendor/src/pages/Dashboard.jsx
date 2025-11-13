@@ -12,10 +12,12 @@ import StallLegend from "../components/StallLegend";
 import GenreSelector from "../components/GenreSelector";
 import PricingCard from "../components/PricingCard";
 import { fetchStalls, reserveStalls } from "../api/stalls";
+import { fetchMyReservedStallCodes } from "../api/reservations";
 import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
   const [stalls, setStalls] = useState([]);
+  const [myReservedCodes, setMyReservedCodes] = useState(new Set());
   const [warn, setWarn] = useState("");
   const [info, setInfo] = useState("");
 
@@ -36,11 +38,35 @@ export default function Dashboard() {
   const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     (async () => {
       const { data } = await fetchStalls();
+      if (!active) return;
+
       setStalls(data);
+
+      const email = user?.email;
+      if (!email) {
+        setMyReservedCodes(new Set());
+        return;
+      }
+
+      try {
+        const { data: codes } = await fetchMyReservedStallCodes(email, data);
+        if (!active) return;
+        setMyReservedCodes(new Set(codes));
+      } catch (err) {
+        console.error("Failed to load reservations", err);
+        if (!active) return;
+        setMyReservedCodes(new Set());
+      }
     })();
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const selectedStallIds = useMemo(
     () => new Set(selectedStalls.keys()),
@@ -48,13 +74,18 @@ export default function Dashboard() {
   );
 
   const bookedCount = useMemo(
-    () => stalls.filter(s => s.status === "BOOKED" && s.reservedBy === user?.email).length,
-    [stalls, user]
+    () => myReservedCodes.size,
+    [myReservedCodes]
+  );
+
+  const reservedStallsForUser = useMemo(
+    () => stalls.filter(stall => myReservedCodes.has(stall.code ?? stall.id)),
+    [stalls, myReservedCodes]
   );
 
   // Accept label from map (S-## / M-## / L-##)
   const handleStallClick = (stall, label) => {
-    if (!stall || stall.status === "BOOKED") return;
+    if (!stall || stall.reserved) return;
 
     if (selectedStalls.has(stall.id)) {
       const next = new Map(selectedStalls);
@@ -108,10 +139,15 @@ export default function Dashboard() {
 
     try {
       const { data } = await reserveStalls({ reservations, userEmail: user.email });
-      setInfo(`Reserved ${data.reserved.length} stall(s) successfully.`);
+      const reservedList = Array.isArray(data?.reserved) ? data.reserved : (data?.stalls ?? []);
+      const reservedCount = reservedList.length || reservations.length;
+      setInfo(`Reserved ${reservedCount} stall(s) successfully.`);
 
       const { data: fresh } = await fetchStalls();
       setStalls(fresh);
+
+      const { data: codes } = await fetchMyReservedStallCodes(user.email, fresh);
+      setMyReservedCodes(new Set(codes));
       setSelectedStalls(new Map());
       // TODO: Show QR using data.qrUrl if needed
     } catch {
@@ -322,7 +358,7 @@ export default function Dashboard() {
       <Paper className="p-4">
         <Typography variant="subtitle1" className="font-semibold mb-2">Already Reserved Stalls</Typography>
         <div className="flex flex-wrap gap-2">
-          {stalls.filter(s => s.status === "BOOKED" && s.reservedBy === user?.email).map(s => (
+          {reservedStallsForUser.map(s => (
             <span key={s.id} className="badge bg-red-500 text-white">{s.code}</span>
           ))}
           {bookedCount === 0 && (

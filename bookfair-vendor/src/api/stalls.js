@@ -38,9 +38,10 @@ function buildMockStallsByHall() {
       const size = nextSize();
       stalls.push({
         id: `${hall}-${String(n).padStart(2, "0")}`,
-        code: `${hall}-${String(n).padStart(2, "0")}`, 
-        size,                        
+        code: `${hall}-${String(n).padStart(2, "0")}`,
+        size,
         status: "AVAILABLE",
+        reserved: false,
         reservedBy: null,
       });
     }
@@ -49,7 +50,11 @@ function buildMockStallsByHall() {
   // Pre-book a few for realism
   ["A-03", "B-12", "H-07", "D-05"].forEach(id => {
     const s = stalls.find(x => x.id === id);
-    if (s) { s.status = "BOOKED"; s.reservedBy = "other@publisher.com"; }
+    if (s) {
+      s.status = "BOOKED";
+      s.reserved = true;
+      s.reservedBy = "other@publisher.com";
+    }
   });
 
   return stalls;
@@ -77,6 +82,7 @@ export async function reserveStalls({ reservations, userEmail }) {
       const s = mockStalls.find(x => x.id === res.stallId);
       if (s) {
         s.status = "BOOKED";
+        s.reserved = true;
         s.reservedBy = userEmail; // Use the email for correct filtering
         // We would also save `res.genres` in a real DB
         console.log(`Mock: Reserving ${s.id} for ${userEmail} with genres: ${res.genres.join(', ')}`);
@@ -86,8 +92,11 @@ export async function reserveStalls({ reservations, userEmail }) {
     
     return { data: { success: true, reserved: reservedIds, qrUrl: "https://example.com/qr.png" } };
   }
-  
+
   // Real API call
-  const { data } = await api.post("/stalls/reserve", { reservations });
+  const stallIds = reservations
+    .map(res => Number(res.stallId))
+    .filter(id => Number.isFinite(id));
+  const { data } = await api.post("/reservations", { stallIds });
   return { data };
 }
