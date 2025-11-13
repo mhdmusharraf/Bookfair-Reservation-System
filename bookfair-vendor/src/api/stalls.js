@@ -1,26 +1,22 @@
 import { api } from "./client";
 
-/** Keep sizes to this distribution */
-const SIZE_QUOTAS = { SMALL: 60, MEDIUM: 50, LARGE: 40 }; // total 150
+const SIZE_QUOTAS = { SMALL: 60, MEDIUM: 50, LARGE: 40 }; 
 
-/** Same hall order and capacities as StallSvgMap.jsx */
 const HALL_DEFS = [
   ["A", 24], ["B", 24], ["C", 12], ["D", 12], ["H", 20],
   ["J", 10], ["K", 10], ["R", 8],  ["L", 6],  ["M", 6],
   ["N", 8],  ["P", 5],  ["Q", 5],
 ];
 
-// Added more genres
+
 export const GENRE_OPTIONS = ["Stationary", "IT", "Hardware", "Fiction", "Non-Fiction", "Sci-Fi", "Fantasy", "Biography", "Children's", "Education", "Comics", "History"];
 
-/** Round-robin assignment of sizes to hit the quotas without clumping */
 function sizeAllocator() {
   const order = ["SMALL", "MEDIUM", "LARGE"];
   const remaining = { ...SIZE_QUOTAS };
   let i = 0;
 
   return function nextSize() {
-    // pick the next available size in round-robin that still has remaining quota
     for (let k = 0; k < order.length; k++) {
       const s = order[(i + k) % order.length];
       if (remaining[s] > 0) {
@@ -29,7 +25,6 @@ function sizeAllocator() {
         return s;
       }
     }
-    // Fallback (should not happen)
     return "SMALL";
   };
 }
@@ -43,9 +38,8 @@ function buildMockStallsByHall() {
       const size = nextSize();
       stalls.push({
         id: `${hall}-${String(n).padStart(2, "0")}`,
-        code: `${hall}-${String(n).padStart(2, "0")}`, // matches SVG top label
-        hall,
-        size,                        // "SMALL" | "MEDIUM" | "LARGE"
+        code: `${hall}-${String(n).padStart(2, "0")}`, 
+        size,                        
         status: "AVAILABLE",
         reservedBy: null,
       });
