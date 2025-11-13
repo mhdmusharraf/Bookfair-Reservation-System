@@ -12,20 +12,21 @@ import java.util.Set;
 @Builder
 public class UserProfileResponse {
 
-    @Schema(example = "1")
-    Long id;
-
-    @Schema(example = "The Book Company")
-    String businessName;
-
-    @Schema(example = "0112345678")
-    String contactNumber;
-
-    @Schema(example = "info@bookco.lk")
+    Long userId;
     String email;
+    String role;
+    Boolean isActive;
 
-    Set<Role> roles;
+    // Vendor-specific (null if EMPLOYEE)
+    Long vendorId;
+    String businessName;
+    String phone;
+    String address;
 
-    LocalDateTime createdAt;
+    // Employee-specific (null if VENDOR)
+    Long employeeId;
+    String fullName;
+    String department;
+    String employeePhone;
 }
 

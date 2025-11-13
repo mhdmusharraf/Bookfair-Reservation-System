@@ -1,6 +1,8 @@
 package com.bookfair.auth.security;
 
 import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.auth.service.CustomUserDetailsService;
+import com.bookfair.auth.service.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,10 +24,12 @@ import java.io.IOException;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final CustomUserDetailsService customUserDetailsService;
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -40,7 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt = authHeader.substring(7);
         final String userEmail;
         try {
-            userEmail = jwtService.extractUsername(jwt);
+            userEmail = jwtService.extractEmail(jwt);
         } catch (JwtException | IllegalArgumentException ex) {
             log.warn("Failed to parse JWT token", ex);
             SecurityContextHolder.clearContext();
@@ -49,8 +53,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (StringUtils.hasText(userEmail) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userRepository.findByEmail(userEmail).orElse(null);
-            if (userDetails != null && jwtService.isTokenValid(jwt, userDetails)) {
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(userEmail);
+            if (jwtService.validateToken(jwt)) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

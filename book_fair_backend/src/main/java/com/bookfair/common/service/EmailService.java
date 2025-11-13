@@ -32,7 +32,7 @@ public class EmailService {
 
             String text = String.format("Hello %s,%n%nYour reservation has been confirmed for stalls: %s.%n" +
                             "Confirmation code: %s%nPlease present the attached QR code at the entrance.%n%nRegards,%nBookfair Team",
-                    user.getBusinessName(),
+                    user.getVendor().getBusinessName(),
                     reservation.getStalls().stream().map(stall -> stall.getCode()).sorted().toList(),
                     reservation.getConfirmationCode());
             helper.setText(text);
