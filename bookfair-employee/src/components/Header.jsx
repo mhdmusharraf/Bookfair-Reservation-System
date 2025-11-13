@@ -3,7 +3,7 @@ import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Shell() {
+export default function Header() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
@@ -24,11 +24,19 @@ export default function Shell() {
           </Button>
           <Button
             component={Link}
-            to="/reserved"
+            to="/join-requests"
             color="inherit"
             sx={{ textTransform: "none" }}
           >
-            Reserved Stalls
+            Join Requests
+          </Button>
+          <Button
+            component={Link}
+            to="/registered-businesses"
+            color="inherit"
+            sx={{ textTransform: "none" }}
+          >
+            Registered Businesses
           </Button>
           <Box className="ml-auto flex items-center gap-4">
             {user && (
@@ -51,7 +59,7 @@ export default function Shell() {
           </Box>
         </Toolbar>
       </AppBar>
-      <Box className="p-4 max-w-6xl mx-auto w-full">
+      <Box className="p-4 mx-auto w-full">
         <Outlet />
       </Box>
     </Box>
