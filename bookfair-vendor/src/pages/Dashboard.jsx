@@ -138,7 +138,7 @@ export default function Dashboard() {
     }));
 
     try {
-      const { data } = await reserveStalls({ reservations, userEmail: user.email });
+      const { data } = await reserveStalls({ reservations });
       const reservedList = Array.isArray(data?.reserved) ? data.reserved : (data?.stalls ?? []);
       const reservedCount = reservedList.length || reservations.length;
       setInfo(`Reserved ${reservedCount} stall(s) successfully.`);
@@ -150,8 +150,10 @@ export default function Dashboard() {
       setMyReservedCodes(new Set(codes));
       setSelectedStalls(new Map());
       // TODO: Show QR using data.qrUrl if needed
-    } catch {
-      setWarn("Reservation failed.");
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || error?.message || "Reservation failed.";
+      setWarn(message);
     } finally {
       setIsReserving(false);
     }

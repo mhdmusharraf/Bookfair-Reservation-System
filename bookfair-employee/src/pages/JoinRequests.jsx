@@ -1,76 +1,119 @@
-import React, { useState } from "react";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
-import dummyRequests from "../data/dummyRequests";
+import React, { useEffect, useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  CircularProgress,
+  Typography,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { IconButton } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 
-
+import { fetchAllReservations } from "../api/reservations";
 
 const JoinRequests = () => {
- const [businesses, setBusinesses] = useState(dummyRequests);
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
- const deleteBusiness = (id) => {
-   setBusinesses((prev) => prev.filter((b) => b.id !== id));
- };
+  useEffect(() => {
+    let active = true;
 
-  const AcceptBusiness = (id) => {
-    setBusinesses((prev) => prev.filter((b) => b.id !== id));
-    
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const { data } = await fetchAllReservations();
+        if (!active) return;
+        setRequests(data ?? []);
+      } catch (err) {
+        if (!active) return;
+        const message =
+          err?.response?.data?.message || err?.message || "Unable to load reservations";
+        setError(message);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const removeRequest = (id) => {
+    setRequests((prev) => prev.filter((request) => request.id !== id));
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <CircularProgress />
+      </div>
+    );
   }
 
- return (
-   <TableContainer component={Paper}>
-     <Table sx={{ minWidth: 650 }} aria-label="simple table">
-       <TableHead>
-         <TableRow>
-           <TableCell sx={{ fontWeight: "bold" }}>Business Name</TableCell>
-           <TableCell sx={{ fontWeight: "bold" }} align="left">
-             Email
-           </TableCell>
-           <TableCell sx={{ fontWeight: "bold" }} align="left">
-             Phone Number
-           </TableCell>
-           <TableCell sx={{ fontWeight: "bold" }} align="center">
-             Actions
-           </TableCell>
-         </TableRow>
-       </TableHead>
-       <TableBody>
-         {businesses.map((business) => (
-           <TableRow
-             key={business.id}
-             sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-           >
-             <TableCell component="th" scope="row">
-               {business.businessName}
-             </TableCell>
-             <TableCell align="left">{business.email}</TableCell>
-             <TableCell align="left">{business.phoneNumber}</TableCell>
+  return (
+    <TableContainer component={Paper}>
+      {error && (
+        <Typography color="error" variant="body2" className="p-3">
+          {error}
+        </Typography>
+      )}
+      <Table sx={{ minWidth: 650 }} aria-label="reservation requests table">
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontWeight: "bold" }}>Business Name</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>Phone Number</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="center">
+              Stalls requested
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="center">
+              Actions
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {requests.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} align="center">
+                No reservation activity yet.
+              </TableCell>
+            </TableRow>
+          ) : (
+            requests.map((request) => (
+              <TableRow key={request.id}>
+                <TableCell component="th" scope="row">
+                  {request.vendorBusinessName}
+                </TableCell>
+                <TableCell>{request.vendorEmail}</TableCell>
+                <TableCell>{request.vendorContactNumber}</TableCell>
+                <TableCell align="center">
+                  {request.stalls?.length ?? request.totalReservedStalls ?? 0}
+                </TableCell>
+                <TableCell align="center">
+                  <IconButton onClick={() => removeRequest(request.id)}>
+                    <CheckIcon color="success" />
+                  </IconButton>
+                  <IconButton onClick={() => removeRequest(request.id)}>
+                    <DeleteIcon color="error" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
 
-             <TableCell
-               align="center"
-               sx={{ display: "flex", justifyContent: "center", gap: 4 }}
-             >
-               <IconButton onClick={() => AcceptBusiness(business.id)}>
-                 <CheckIcon />
-               </IconButton>
-               <IconButton onClick={() => deleteBusiness(business.id)}>
-                 <DeleteIcon />
-               </IconButton>
-             </TableCell>
-           </TableRow>
-         ))}
-       </TableBody>
-     </Table>
-   </TableContainer>
- );
-}
-
-export default JoinRequests
+export default JoinRequests;

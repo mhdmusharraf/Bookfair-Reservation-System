@@ -55,7 +55,7 @@ export default function Reserved() {
                 <span className="badge bg-red-500 text-white">Booked</span>
               </div>
               <div className="text-xs text-gray-600 mt-1">Size: {s.size}</div>
-              <div className="text-xs text-gray-600">Reserved by: {s.reservedBy ?? user?.email ?? "You"}</div>
+              <div className="text-xs text-gray-600">Reserved by: {user?.email ?? "You"}</div>
             </div>
           ))}
         </div>
