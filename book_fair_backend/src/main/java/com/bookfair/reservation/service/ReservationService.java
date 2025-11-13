@@ -105,6 +105,9 @@ public class ReservationService {
                 .confirmationCode(reservation.getConfirmationCode())
                 .stalls(stallCodes)
                 .totalReservedStalls(stallCodes.size())
+                .vendorBusinessName(reservation.getUser().getBusinessName())
+                .vendorEmail(reservation.getUser().getEmail())
+                .vendorContactNumber(reservation.getUser().getContactNumber())
                 .build();
     }
 
