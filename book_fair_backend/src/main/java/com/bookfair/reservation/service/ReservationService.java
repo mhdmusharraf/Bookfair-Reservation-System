@@ -1,6 +1,8 @@
 package com.bookfair.reservation.service;
 
 import com.bookfair.auth.entity.User;
+import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.common.constants.Role;
 import com.bookfair.common.service.EmailService;
 import com.bookfair.common.service.QrCodeService;
 import com.bookfair.reservation.dto.ReservationRequest;
@@ -31,6 +33,7 @@ public class ReservationService {
     private final StallRepository stallRepository;
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
@@ -74,6 +77,9 @@ public class ReservationService {
         Reservation savedReservation = reservationRepository.save(reservation);
 
         emailService.sendReservationConfirmation(user, savedReservation, qrCodeBytes);
+
+        List<User> employees = userRepository.findAllByRole(Role.EMPLOYEE);
+        emailService.sendReservationNotificationToEmployees(savedReservation, employees, qrCodeBytes);
 
         log.info("Reservation {} created for user {}", savedReservation.getId(), user.getEmail());
         return toResponse(savedReservation);
