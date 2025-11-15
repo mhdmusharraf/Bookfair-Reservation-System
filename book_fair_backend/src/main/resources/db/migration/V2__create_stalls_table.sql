@@ -21,15 +21,15 @@ BEGIN
         WHERE table_name = 'stalls'
           AND column_name = 'reserved'
     ) THEN
-        EXECUTE $$UPDATE stalls
+        EXECUTE $q$UPDATE stalls
             SET status = CASE
                 WHEN status IS NOT NULL THEN status
                 WHEN reserved IS TRUE THEN 'BOOKED'
                 ELSE 'AVAILABLE'
-            END$$;
+            END$q$;
     ELSE
-        EXECUTE $$UPDATE stalls
-            SET status = COALESCE(status, 'AVAILABLE')$$;
+        EXECUTE $q$UPDATE stalls
+            SET status = COALESCE(status, 'AVAILABLE')$q$;
     END IF;
 END
 $$;
