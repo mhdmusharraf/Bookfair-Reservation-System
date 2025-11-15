@@ -31,6 +31,16 @@ const HALLS = {
   H: { x: 60, y: 600, w: 280, h: 170, r: 18, capacity: 20, label: "HALL H" },
 };
 
+const HALL_DEFAULT_SIZE = {
+  A: "LARGE",
+  B: "LARGE",
+  C: "MEDIUM",
+  D: "MEDIUM",
+  H: "MEDIUM",
+  J: "MEDIUM",
+  K: "MEDIUM",
+};
+
 const AMENITIES = [
   { x: 860, y: 320, w: 140, h: 44, label: "Public Toilet", kind: "TOILET" },
   { x: 950, y: 710, w: 220, h: 60, label: "Cafeteria", kind: "CAFE" },
@@ -58,6 +68,19 @@ const TOP_LABEL_PAD   = 28;
 const CELL_PAD        = 12;
 const CELL_GAP        = 8;
 const SIZE_TAG        = { SMALL: "S", MEDIUM: "M", LARGE: "L" };
+
+const formatCode = (hall, index) => `${hall}${String(index).padStart(2, "0")}`;
+
+const toStringSet = (values) => {
+  if (!values) return new Set();
+  const array = values instanceof Set ? Array.from(values) : Array.isArray(values) ? values : [];
+  const mapped = new Set();
+  array.forEach((value) => {
+    if (value === null || value === undefined) return;
+    mapped.add(String(value));
+  });
+  return mapped;
+};
 
 function layoutCells(capacity) {
   const cols = Math.ceil(Math.sqrt(capacity));
@@ -311,7 +334,7 @@ function Roads() {
 }
 
 /////////////////// MAIN ///////////////////
-export default function StallSvgMap({ stalls, selectedIds, onToggle }) {
+export default function StallSvgMap({ stalls, selectedIds, onToggle, bookedIds, inProgressIds }) {
   const positions = useMemo(() => {
     const out = [];
     const counters = {};
@@ -330,21 +353,91 @@ export default function StallSvgMap({ stalls, selectedIds, onToggle }) {
 
           const x = b.x + CELL_PAD + c * (cellW + CELL_GAP);
           const y = b.y + TOP_LABEL_PAD + r * (cellH + CELL_GAP);
-          out.push({ hall: hallKey, idxInHall: nextIndex, x, y, w: cellW, h: cellH });
+          out.push({
+            hall: hallKey,
+            idxInHall: nextIndex,
+            code: formatCode(hallKey, nextIndex),
+            x,
+            y,
+            w: cellW,
+            h: cellH,
+          });
         }
       }
     });
     return out.slice(0, 150);
   }, []);
 
-  const sizeLabels = useMemo(() => {
-    const c = { SMALL: 0, MEDIUM: 0, LARGE: 0 };
-    return stalls.slice(0, 150).map((s) => {
-      c[s.size] = (c[s.size] || 0) + 1;
-      const tag = SIZE_TAG[s.size] ?? "?";
-      return `${tag}-${c[s.size]}`;
+  const bookedLookup = useMemo(() => toStringSet(bookedIds), [bookedIds]);
+  const inProgressLookup = useMemo(() => toStringSet(inProgressIds), [inProgressIds]);
+
+  const normalizedStalls = useMemo(() => {
+    const codeMap = new Map();
+    stalls.forEach((stall) => {
+      if (!stall) return;
+      const code = typeof stall.code === "string" ? stall.code.toUpperCase() : null;
+      if (code) {
+        codeMap.set(code, stall);
+      }
     });
-  }, [stalls]);
+
+    return positions.map((slot) => {
+      const templateSize = HALL_DEFAULT_SIZE[slot.hall] ?? "SMALL";
+      const fallback = {
+        ...slot,
+        id: slot.code,
+        code: slot.code,
+        hall: slot.hall,
+        size: templateSize,
+        status: "AVAILABLE",
+        reserved: false,
+        isPlaceholder: true,
+      };
+
+      const actual = codeMap.get(slot.code) ?? null;
+      const merged = actual
+        ? {
+            ...fallback,
+            ...actual,
+            id: actual.id ?? fallback.id,
+            code: actual.code ?? fallback.code,
+            size: actual.size ?? fallback.size,
+            hall: fallback.hall,
+            x: fallback.x,
+            y: fallback.y,
+            w: fallback.w,
+            h: fallback.h,
+            isPlaceholder: false,
+          }
+        : fallback;
+
+      const mergedId = merged.id ?? fallback.id;
+      let status = merged.status ?? (merged.reserved ? "BOOKED" : "AVAILABLE");
+      const idKey = mergedId !== undefined && mergedId !== null ? String(mergedId) : null;
+      if (idKey && bookedLookup.has(idKey)) {
+        status = "BOOKED";
+      } else if (idKey && inProgressLookup.has(idKey)) {
+        status = "IN_PROGRESS";
+      }
+
+      return {
+        ...merged,
+        id: mergedId ?? fallback.id,
+        status,
+        reserved: status === "BOOKED",
+      };
+    });
+  }, [stalls, positions, bookedLookup, inProgressLookup]);
+
+  const sizeLabels = useMemo(() => {
+    const counts = { SMALL: 0, MEDIUM: 0, LARGE: 0 };
+    return normalizedStalls.map((stall) => {
+      const size = stall.size ?? "UNKNOWN";
+      counts[size] = (counts[size] || 0) + 1;
+      const tag = SIZE_TAG[size] ?? "?";
+      return `${tag}-${counts[size]}`;
+    });
+  }, [normalizedStalls]);
 
   // === Ticket counters ===
   // Entrance 1: above & left side of the entrance bar
@@ -397,29 +490,53 @@ export default function StallSvgMap({ stalls, selectedIds, onToggle }) {
           <Entrance e={ENTRANCE} />
           <EntranceSmallLeft e={ENTRANCE_LEFT} />
 
-          {stalls.slice(0, 150).map((stall, i) => {
-            const p = positions[i];
-            if (!p) return null;
+          {normalizedStalls.map((stall, i) => {
+            if (!stall) return null;
 
-            const isBooked   = Boolean(stall.reserved);
-            const isSelected = selectedIds.has(stall.id);
-            const fill = isBooked ? COLORS.BOOKED : (isSelected ? COLORS.IN_PROGRESS : COLORS.AVAILABLE);
+            const status = stall.status ?? (stall.reserved ? "BOOKED" : "AVAILABLE");
+            const isBooked = status === "BOOKED";
+            const isInProgress = status === "IN_PROGRESS";
+            const isSelected = Boolean(selectedIds?.has?.(stall.id));
+            const isPlaceholder = Boolean(stall.isPlaceholder);
+            const isUnavailable = isBooked || isInProgress || isPlaceholder;
 
+            let fill = COLORS.AVAILABLE;
+            if (isBooked) {
+              fill = COLORS.BOOKED;
+            } else if (isSelected || isInProgress) {
+              fill = COLORS.IN_PROGRESS;
+            }
+
+            const strokeColor = isSelected ? COLORS.SELECT_STROKE : COLORS.STROKE;
+            const strokeWidth = isSelected ? 3 : 1.5;
             const codeTop = sizeLabels[i];
 
+            const handleClick = () => {
+              if (isUnavailable) return;
+              onToggle?.(stall, codeTop);
+            };
+
             return (
-              <g key={stall.id} onClick={() => !isBooked && onToggle(stall, codeTop)} style={{ cursor: isBooked ? "not-allowed" : "pointer" }}>
+              <g
+                key={stall.id ?? `${stall.code}-${i}`}
+                onClick={handleClick}
+                style={{ cursor: isUnavailable ? "not-allowed" : "pointer" }}
+              >
                 <rect
-                  x={p.x} y={p.y} width={p.w} height={p.h}
-                  rx={6} ry={6}
+                  x={stall.x}
+                  y={stall.y}
+                  width={stall.w}
+                  height={stall.h}
+                  rx={6}
+                  ry={6}
                   fill={fill}
-                  stroke={isSelected ? COLORS.SELECT_STROKE : COLORS.STROKE}
-                  strokeWidth={isSelected ? 3 : 1.5}
-                  opacity={isBooked ? 0.85 : 1}
+                  stroke={strokeColor}
+                  strokeWidth={strokeWidth}
+                  opacity={isPlaceholder ? 0.4 : isBooked ? 0.85 : 1}
                 />
                 <text
-                  x={p.x + p.w / 2}
-                  y={p.y + 3}
+                  x={stall.x + stall.w / 2}
+                  y={stall.y + 3}
                   textAnchor="middle"
                   dominantBaseline="hanging"
                   fontSize="11"
@@ -429,7 +546,7 @@ export default function StallSvgMap({ stalls, selectedIds, onToggle }) {
                 >
                   {codeTop}
                 </text>
-                <title>{`${codeTop} — ${stall.size} — ${isBooked ? "Booked" : isSelected ? "In progress" : "Available"}`}</title>
+                <title>{`${codeTop} — ${stall.size ?? "Unknown"} — ${isPlaceholder ? "Unavailable" : isBooked ? "Booked" : isInProgress ? "In progress" : "Available"}`}</title>
               </g>
             );
           })}
