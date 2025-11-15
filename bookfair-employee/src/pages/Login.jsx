@@ -26,6 +26,7 @@ export default function Login() {
       setErr(message);
     } finally {
       setLoading(false);
+      console.log("Submitting login form");
     }
   };
 
