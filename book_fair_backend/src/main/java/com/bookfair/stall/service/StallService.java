@@ -60,6 +60,8 @@ public class StallService {
     public StallResponse releaseStall(Long id) {
         Stall stall = stallRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Stall not found"));
+                stall.getReservations().forEach(reservation -> reservation.getStalls().remove(stall));
+        stall.getReservations().clear();
         stall.setReserved(false);
         Stall saved = stallRepository.save(stall);
         return toResponse(saved);
