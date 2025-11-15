@@ -17,11 +17,21 @@ export const GENRE_OPTIONS = [
 
 export async function fetchStalls(params = {}) {
   const { data } = await api.get("/stalls", { params });
-  const normalized = data.map((stall) => ({
-    ...stall,
-    status: stall.reserved ? "BOOKED" : "AVAILABLE",
-  }));
-  return { data: normalized };
+  const stalls = Array.isArray(data?.stalls) ? data.stalls : Array.isArray(data) ? data : [];
+  const normalized = stalls.map((stall) => {
+    const status = stall.status ?? (stall.reserved ? "BOOKED" : "AVAILABLE");
+    return {
+      ...stall,
+      status,
+      reserved: status === "BOOKED" || stall.reserved === true,
+    };
+  });
+
+  return {
+    data: normalized,
+    bookedIds: Array.isArray(data?.bookedIds) ? data.bookedIds : [],
+    inProgressIds: Array.isArray(data?.inProgressIds) ? data.inProgressIds : [],
+  };
 }
 
 export async function reserveStalls({ reservations }) {
