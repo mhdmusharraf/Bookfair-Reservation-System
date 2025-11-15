@@ -17,6 +17,8 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
   const [stalls, setStalls] = useState([]);
+  const [serverBookedIds, setServerBookedIds] = useState(new Set());
+  const [serverInProgressIds, setServerInProgressIds] = useState(new Set());
   const [myReservedCodes, setMyReservedCodes] = useState(new Set());
   const [warn, setWarn] = useState("");
   const [info, setInfo] = useState("");
@@ -41,10 +43,24 @@ export default function Dashboard() {
     let active = true;
 
     (async () => {
-      const { data } = await fetchStalls();
+      const { data, bookedIds, inProgressIds } = await fetchStalls();
       if (!active) return;
 
       setStalls(data);
+
+      const bookedSet = new Set();
+      (bookedIds ?? []).forEach((value) => {
+        if (value === null || value === undefined) return;
+        bookedSet.add(String(value));
+      });
+      setServerBookedIds(bookedSet);
+
+      const progressSet = new Set();
+      (inProgressIds ?? []).forEach((value) => {
+        if (value === null || value === undefined) return;
+        progressSet.add(String(value));
+      });
+      setServerInProgressIds(progressSet);
 
       const email = user?.email;
       if (!email) {
@@ -85,7 +101,14 @@ export default function Dashboard() {
 
   // Accept label from map (S-## / M-## / L-##)
   const handleStallClick = (stall, label) => {
-    if (!stall || stall.reserved) return;
+    if (
+      !stall ||
+      stall.isPlaceholder ||
+      stall.reserved ||
+      stall.status === "BOOKED" ||
+      stall.status === "IN_PROGRESS"
+    )
+      return;
 
     if (selectedStalls.has(stall.id)) {
       const next = new Map(selectedStalls);
@@ -138,7 +161,7 @@ export default function Dashboard() {
     }));
 
     try {
-      const { data } = await reserveStalls({ reservations, userEmail: user.email });
+      const { data } = await reserveStalls({ reservations });
       const reservedList = Array.isArray(data?.reserved) ? data.reserved : (data?.stalls ?? []);
       const reservedCount = reservedList.length || reservations.length;
       setInfo(`Reserved ${reservedCount} stall(s) successfully.`);
@@ -150,8 +173,10 @@ export default function Dashboard() {
       setMyReservedCodes(new Set(codes));
       setSelectedStalls(new Map());
       // TODO: Show QR using data.qrUrl if needed
-    } catch {
-      setWarn("Reservation failed.");
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || error?.message || "Reservation failed.";
+      setWarn(message);
     } finally {
       setIsReserving(false);
     }
@@ -203,6 +228,8 @@ export default function Dashboard() {
             <StallSvgMap
               stalls={stalls}
               selectedIds={selectedStallIds}
+              bookedIds={serverBookedIds}
+              inProgressIds={serverInProgressIds}
               onToggle={handleStallClick} // receives (stall, label)
             />
           </div>
