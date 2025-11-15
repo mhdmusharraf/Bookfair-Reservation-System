@@ -31,7 +31,7 @@ const [businesses, setBusinesses] = useState(dummyRequests);
               Phone Number
             </TableCell>
             <TableCell sx={{ fontWeight: "bold" }} align="center">
-              Stalls
+              Stalls - Genre
             </TableCell>
             <TableCell sx={{ fontWeight: "bold" }} align="center">
               Actions
@@ -50,7 +50,9 @@ const [businesses, setBusinesses] = useState(dummyRequests);
               <TableCell align="left">{business.email}</TableCell>
               <TableCell align="left">{business.phoneNumber}</TableCell>
               <TableCell align="center">
-                {business.requestedStalls.map((s) => s.stallId).join(", ")}
+                {business.requestedStalls.map((s) => (
+                  <div key={s.stallId}>{`${s.stallId} - ${s.genre}`}</div>
+                ))}
               </TableCell>
               <TableCell align="center">
                 {" "}
