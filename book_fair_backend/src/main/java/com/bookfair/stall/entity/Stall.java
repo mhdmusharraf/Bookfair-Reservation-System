@@ -49,8 +49,10 @@ public class Stall {
 
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
-    private boolean reserved = false;
+    private StallStatus status = StallStatus.AVAILABLE;
 
     @Builder.Default
     @ManyToMany(mappedBy = "stalls", fetch = FetchType.LAZY)

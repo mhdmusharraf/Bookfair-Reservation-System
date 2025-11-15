@@ -8,6 +8,7 @@ import com.bookfair.reservation.dto.ReservationResponse;
 import com.bookfair.reservation.entity.Reservation;
 import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.stall.entity.Stall;
+import com.bookfair.stall.entity.StallStatus;
 import com.bookfair.stall.repository.StallRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -48,8 +49,9 @@ public class ReservationService {
         }
 
         stalls.forEach(stall -> {
-            if (stall.isReserved()) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is already reserved");
+            StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
+            if (status != StallStatus.AVAILABLE) {
+                throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
             }
         });
 
@@ -61,7 +63,7 @@ public class ReservationService {
                 .build();
 
         stalls.forEach(stall -> {
-            stall.setReserved(true);
+            stall.setStatus(StallStatus.BOOKED);
             reservation.getStalls().add(stall);
             stall.getReservations().add(reservation);
         });

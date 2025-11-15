@@ -14,3 +14,8 @@ export function attachToken(token) {
     delete api.defaults.headers.common.Authorization;
   }
 }
+
+const storedToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+if (storedToken) {
+  attachToken(storedToken);
+}

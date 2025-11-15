@@ -25,6 +25,16 @@ const HALLS = {
   H: { x: 60, y: 600, w: 280, h: 170, r: 18, capacity: 20, label: "HALL H" },
 };
 
+const HALL_DEFAULT_SIZE = {
+  A: "LARGE",
+  B: "LARGE",
+  C: "MEDIUM",
+  D: "MEDIUM",
+  H: "MEDIUM",
+  J: "MEDIUM",
+  K: "MEDIUM",
+};
+
 const AMENITIES = [
   { x: 860, y: 320, w: 140, h: 44, label: "Public Toilet", kind: "TOILET" },
   { x: 950, y: 710, w: 220, h: 60, label: "Cafeteria", kind: "CAFE" },
@@ -50,6 +60,8 @@ const CELL_PAD = 12;
 const CELL_GAP = 8;
 
 const SIZE_TAG = { SMALL: "S", MEDIUM: "M", LARGE: "L" };
+
+const formatCode = (hall, index) => `${hall}${String(index).padStart(2, "0")}`;
 
 function layoutCells(capacity) {
   const cols = Math.ceil(Math.sqrt(capacity));
@@ -231,6 +243,7 @@ export default function StallSvgMap({ stalls, onSelect }) {
           out.push({
             hall: hallKey,
             idxInHall: nextIndex,
+            code: formatCode(hallKey, nextIndex),
             x,
             y,
             w: cellW,
@@ -242,14 +255,61 @@ export default function StallSvgMap({ stalls, onSelect }) {
     return out.slice(0, 150);
   }, []);
 
-  const sizeLabels = useMemo(() => {
-    const c = { SMALL: 0, MEDIUM: 0, LARGE: 0 };
-    return stalls.slice(0, 150).map((s) => {
-      c[s.size] = (c[s.size] || 0) + 1;
-      const tag = SIZE_TAG[s.size] ?? "?";
-      return `${tag}-${c[s.size]}`;
+  const normalizedStalls = useMemo(() => {
+    const codeMap = new Map();
+    stalls.forEach((stall) => {
+      if (!stall) return;
+      const code = typeof stall.code === "string" ? stall.code.toUpperCase() : null;
+      if (code) {
+        codeMap.set(code, stall);
+      }
     });
-  }, [stalls]);
+
+    return positions.map((slot) => {
+      const templateSize = HALL_DEFAULT_SIZE[slot.hall] ?? "SMALL";
+      const fallback = {
+        ...slot,
+        id: slot.code,
+        code: slot.code,
+        hall: slot.hall,
+        size: templateSize,
+        status: "AVAILABLE",
+        backendStatus: "AVAILABLE",
+        isPlaceholder: true,
+      };
+
+      const actual = codeMap.get(slot.code) ?? null;
+      if (!actual) {
+        return fallback;
+      }
+
+      return {
+        ...fallback,
+        ...actual,
+        id: actual.id ?? fallback.id,
+        code: actual.code ?? fallback.code,
+        size: actual.size ?? fallback.size,
+        status: actual.status ?? fallback.status,
+        backendStatus: actual.backendStatus ?? actual.status ?? fallback.backendStatus,
+        hall: fallback.hall,
+        x: fallback.x,
+        y: fallback.y,
+        w: fallback.w,
+        h: fallback.h,
+        isPlaceholder: false,
+      };
+    });
+  }, [stalls, positions]);
+
+  const sizeLabels = useMemo(() => {
+    const counts = { SMALL: 0, MEDIUM: 0, LARGE: 0 };
+    return normalizedStalls.map((stall) => {
+      const size = stall.size ?? "UNKNOWN";
+      counts[size] = (counts[size] || 0) + 1;
+      const tag = SIZE_TAG[size] ?? "?";
+      return `${tag}-${counts[size]}`;
+    });
+  }, [normalizedStalls]);
 
   return (
     <div className="w-full">
@@ -287,11 +347,11 @@ export default function StallSvgMap({ stalls, onSelect }) {
         <Entrance e={ENTRANCE} />
         <EntranceSmallLeft e={ENTRANCE_LEFT} />
 
-        {stalls.slice(0, 150).map((stall, i) => {
-          const p = positions[i];
-          if (!p) return null;
+        {normalizedStalls.map((stall, i) => {
+          if (!stall) return null;
 
-          const status = stall.status;
+          const status = stall.status ?? "AVAILABLE";
+          const isPlaceholder = Boolean(stall.isPlaceholder);
           const fill =
             status === "ACCEPTED"
               ? COLORS.ACCEPTED
@@ -303,25 +363,28 @@ export default function StallSvgMap({ stalls, onSelect }) {
 
           return (
             <g
-              key={stall.id}
-              onClick={() => onSelect(stall)}
-              style={{ cursor: "pointer" }}
+              key={stall.id ?? `${stall.code}-${i}`}
+              onClick={() => {
+                if (isPlaceholder) return;
+                onSelect?.(stall);
+              }}
+              style={{ cursor: isPlaceholder ? "not-allowed" : "pointer" }}
             >
               <rect
-                x={p.x}
-                y={p.y}
-                width={p.w}
-                height={p.h}
+                x={stall.x}
+                y={stall.y}
+                width={stall.w}
+                height={stall.h}
                 rx={6}
                 ry={6}
                 fill={fill}
                 stroke={COLORS.STROKE}
                 strokeWidth={1.5}
-                opacity={0.95}
+                opacity={isPlaceholder ? 0.4 : 0.95}
               />
               <text
-                x={p.x + p.w / 2}
-                y={p.y + 3}
+                x={stall.x + stall.w / 2}
+                y={stall.y + 3}
                 textAnchor="middle"
                 dominantBaseline="hanging"
                 fontSize="11"
@@ -331,7 +394,7 @@ export default function StallSvgMap({ stalls, onSelect }) {
               >
                 {codeTop}
               </text>
-              <title>{`${codeTop} — ${stall.size} — ${status}`}</title>
+              <title>{`${codeTop} — ${stall.size ?? "Unknown"} — ${stall.backendStatus ?? status}`}</title>
             </g>
           );
         })}

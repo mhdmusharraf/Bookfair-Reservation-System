@@ -1,4 +1,5 @@
 import axios from "axios";
+import { api } from "./client";
 
 async function fetchProfile(token) {
   const { data } = await api.get("/auth/me", {
