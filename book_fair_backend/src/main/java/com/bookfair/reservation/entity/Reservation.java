@@ -14,7 +14,6 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import jakarta.persistence.Lob;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -59,7 +58,6 @@ public class Reservation {
     @Column(name = "confirmation_code", nullable = false, unique = true)
     private String confirmationCode;
 
-    @Lob
     @Column(name = "qr_code", columnDefinition = "BYTEA")
     private byte[] qrCode;
 
