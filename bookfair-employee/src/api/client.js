@@ -1,14 +1,16 @@
 import axios from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "";
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
 
 export const api = axios.create({
-  baseURL: baseURL || undefined,
+  baseURL,
 });
 
 export function attachToken(token) {
-  api.interceptors.request.use((config) => {
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-  });
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
 }

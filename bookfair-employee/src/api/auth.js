@@ -1,84 +1,37 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
-// example: "http://localhost:5000"
+async function fetchProfile(token) {
+  const { data } = await api.get("/auth/me", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+}
 
 // ----------------------------------
 // USER SIGNUP
 // ----------------------------------
 export async function signupEmployee(payload) {
-  if (!BASE_URL) {
-    return {
-      data: {
-        token: "mock-token",
-        user: {
-          name: payload.name,
-          email: payload.email,
-          role: "EMPLOYEE",
-        },
-      },
-    };
-  }
-
-  const { data } = await axios.post(
-    `${BASE_URL}/api/v1/auth/register`,
-    payload
-  );
-  return { data };
+  const { data } = await api.post("/auth/register/employee", payload);
+  const user = await fetchProfile(data.token);
+  return { data: { token: data.token, user } };
 }
 
 // ----------------------------------
 // LOGIN
 // ----------------------------------
 export async function login(payload) {
-  if (!BASE_URL) {
-    return {
-      data: {
-        token: "mock-token",
-        user: {
-          email: payload.email,
-          role: "EMPLOYEE",
-        },
-      },
-    };
-  }
+  const { data } = await api.post("/auth/login", payload);
+  const user = await fetchProfile(data.token);
+  return { data: { token: data.token, user } };
+}
 
-  const { data } = await axios.post(
-    `${BASE_URL}/api/v1/auth/login`,
-    payload
-  );
+export async function validateInvite(token) {
+  const { data } = await api.get(`/invites/${token}`);
   return { data };
 }
 
-// ----------------------------------
-// ADMIN: ACCEPT A USER ACCOUNT
-// ----------------------------------
-export async function acceptUser(userId, email) {
-  if (!BASE_URL) {
-    return { data: { message: "Mock user accepted" } };
-  }
-
-  const { data } = await axios.post(`${BASE_URL}/api/v1/auth/accept`, {
-    userId,
-    email,
-  });
-
-  return { data };
-}
-
-
-// ----------------------------------
-// ADMIN: REJECT USER
-// ----------------------------------
-export async function rejectUser(userId, email) {
-  if (!BASE_URL) {
-    return { data: { message: "Mock user rejected" } };
-  }
-
-  const { data } = await axios.post(`${BASE_URL}/api/v1/auth/reject`, {
-    userId,
-    email,
-  });
-
-  return { data };
+export async function acceptInvite(token, payload) {
+  const { data } = await api.post(`/invites/${token}/accept`, payload);
+  const user = await fetchProfile(data.token);
+  return { data: { token: data.token, user } };
 }
