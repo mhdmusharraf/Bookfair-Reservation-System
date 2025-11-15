@@ -98,7 +98,7 @@ const RegisteredBusinesses = () => {
             <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
             <TableCell sx={{ fontWeight: "bold" }}>Phone Number</TableCell>
             <TableCell sx={{ fontWeight: "bold" }} align="center">
-              Stalls
+              Stalls - Genre
             </TableCell>
             <TableCell sx={{ fontWeight: "bold" }} align="center">
               Actions

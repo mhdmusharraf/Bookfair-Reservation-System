@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
+import { acceptUser, rejectUser } from "../api/auth.js";
 
 import { fetchAllReservations } from "../api/reservations";
 
