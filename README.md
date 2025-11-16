@@ -33,7 +33,7 @@ Both front-ends are Vite applications that expect the API base URL to be provide
    cd bookfair-employee
    npm install
    ```
-2. Provide the API base URL, e.g. create a `.env.local` file containing `VITE_API_BASE_URL=http://localhost:8080`.
+2. Provide the API base URL, e.g. create a `.env.local` file containing `VITE_API_BASE_URL=http://localhost:8080/api/v1`.
 3. Start the development server:
    ```bash
    npm run dev
@@ -46,7 +46,7 @@ Both front-ends are Vite applications that expect the API base URL to be provide
    cd bookfair-vendor
    npm install
    ```
-2. Provide the API base URL (for example via `.env.local` with `VITE_API_BASE_URL=http://localhost:8080`).
+2. Provide the API base URL (for example via `.env.local` with `VITE_API_BASE_URL=http://localhost:8080/api/v1`).
 3. Launch the development server:
    ```bash
    npm run dev

@@ -1,6 +1,8 @@
 package com.bookfair.reservation.service;
 
 import com.bookfair.auth.entity.User;
+import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.common.constants.Role;
 import com.bookfair.common.service.EmailService;
 import com.bookfair.common.service.QrCodeService;
 import com.bookfair.reservation.dto.ReservationRequest;
@@ -8,6 +10,7 @@ import com.bookfair.reservation.dto.ReservationResponse;
 import com.bookfair.reservation.entity.Reservation;
 import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.stall.entity.Stall;
+import com.bookfair.stall.entity.StallStatus;
 import com.bookfair.stall.repository.StallRepository;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +33,7 @@ public class ReservationService {
     private final StallRepository stallRepository;
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
@@ -48,8 +52,9 @@ public class ReservationService {
         }
 
         stalls.forEach(stall -> {
-            if (stall.isReserved()) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is already reserved");
+            StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
+            if (status != StallStatus.AVAILABLE) {
+                throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
             }
         });
 
@@ -61,7 +66,7 @@ public class ReservationService {
                 .build();
 
         stalls.forEach(stall -> {
-            stall.setReserved(true);
+            stall.setStatus(StallStatus.BOOKED);
             reservation.getStalls().add(stall);
             stall.getReservations().add(reservation);
         });
@@ -72,6 +77,9 @@ public class ReservationService {
         Reservation savedReservation = reservationRepository.save(reservation);
 
         emailService.sendReservationConfirmation(user, savedReservation, qrCodeBytes);
+
+        List<User> employees = userRepository.findAllByRole(Role.EMPLOYEE);
+        emailService.sendReservationNotificationToEmployees(savedReservation, employees, qrCodeBytes);
 
         log.info("Reservation {} created for user {}", savedReservation.getId(), user.getEmail());
         return toResponse(savedReservation);
@@ -105,6 +113,9 @@ public class ReservationService {
                 .confirmationCode(reservation.getConfirmationCode())
                 .stalls(stallCodes)
                 .totalReservedStalls(stallCodes.size())
+                .vendorBusinessName(reservation.getUser().getBusinessName())
+                .vendorEmail(reservation.getUser().getEmail())
+                .vendorContactNumber(reservation.getUser().getContactNumber())
                 .build();
     }
 

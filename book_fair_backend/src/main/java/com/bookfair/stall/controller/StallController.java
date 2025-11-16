@@ -1,5 +1,6 @@
 package com.bookfair.stall.controller;
 
+import com.bookfair.stall.dto.StallCollectionResponse;
 import com.bookfair.stall.dto.StallRequest;
 import com.bookfair.stall.dto.StallResponse;
 import com.bookfair.stall.entity.StallSize;
@@ -21,8 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -34,7 +33,7 @@ public class StallController {
 
     @GetMapping
     @Operation(summary = "Retrieve stalls", description = "Optionally filter by availability and size")
-    public ResponseEntity<List<StallResponse>> getStalls(
+    public ResponseEntity<StallCollectionResponse> getStalls(
             @Parameter(description = "Return only available stalls")
             @RequestParam(name = "availableOnly", defaultValue = "false") boolean availableOnly,
             @Parameter(description = "Filter by stall size")
