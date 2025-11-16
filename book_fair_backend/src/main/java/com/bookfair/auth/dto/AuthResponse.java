@@ -11,9 +11,17 @@ import java.time.LocalDateTime;
 public class AuthResponse {
 
     @Schema(description = "JWT access token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
-    String token;
+    String accessToken;
+
+    @Schema(description = "Token type", example = "Bearer")
+    String tokenType = "Bearer";
 
     @Schema(description = "Token expiry timestamp")
-    LocalDateTime expiresAt;
+    private long expiresIn;
+
+    @Schema(description = "User details")
+    UserProfileResponse user;
+
+
 }
 

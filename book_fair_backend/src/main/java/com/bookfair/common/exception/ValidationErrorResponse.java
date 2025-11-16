@@ -1,0 +1,19 @@
+package com.bookfair.common.exception;
+
+import lombok.*;
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ValidationErrorResponse {
+    private LocalDateTime timestamp;
+    private int status;
+    private String error;
+    private String message;
+    private String path;
+    private Map<String, String> errors;
+}
