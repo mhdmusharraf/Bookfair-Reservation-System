@@ -11,6 +11,7 @@ import { useNavigate, Link } from "react-router-dom";
 
 export default function Signup() {
   const [businessName, setBusinessName] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState(""); 
   const [password, setPassword] = useState("");

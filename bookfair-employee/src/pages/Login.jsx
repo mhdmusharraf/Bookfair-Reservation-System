@@ -22,10 +22,11 @@ export default function Login() {
       login(data.token, data.user);
       nav("/");
     } catch (err) {
-      console.log(err);
-      setErr("Invalid credentials");
+      const message = err?.response?.data?.message || "Invalid credentials";
+      setErr(message);
     } finally {
       setLoading(false);
+      console.log("Submitting login form");
     }
   };
 
@@ -44,6 +45,8 @@ export default function Login() {
             fullWidth
             size="small"
             label="Email"
+            type="email"
+            required
             sx={{ marginBottom: 2 }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -56,6 +59,7 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
           {err && (
             <Typography color="error" variant="body2">

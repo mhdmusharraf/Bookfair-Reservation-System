@@ -6,10 +6,10 @@ export default function StallLegend() {
         <span className="w-4 h-4 rounded bg-green-500 inline-block" /> Available
       </div>
       <div className="flex items-center gap-2">
-        <span className="w-4 h-4 rounded bg-yellow-400 inline-block" /> In progress
+        <span className="w-4 h-4 rounded bg-yellow-400 inline-block" /> Requested
       </div>
       <div className="flex items-center gap-2">
-        <span className="w-4 h-4 rounded bg-red-500 inline-block" /> Booked
+        <span className="w-4 h-4 rounded bg-red-500 inline-block" /> Accepted
       </div>
     </div>
   );

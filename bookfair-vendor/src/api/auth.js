@@ -34,21 +34,16 @@ export async function login(payload) {
   
   // Real API call
   const { data } = await api.post("/auth/login", payload);
-  return { data };
+  const user = await fetchProfile(data.token);
+  return { data: { token: data.token, user } };
 }
 
 export async function validateInvite(token) {
-  if (!api.defaults.baseURL) {
-    return { data: { email: "employee@example.com", vendorBusiness: "Demo Books" } };
-  }
   const { data } = await api.get(`/invites/${token}`);
   return { data };
 }
 
 export async function acceptInvite(token, payload) {
-  if (!api.defaults.baseURL) {
-    return { data: { token: "mock-emp-token", user: { email: "employee@example.com", businessName: "Demo Books", role: "EMPLOYEE" } } };
-  }
   const { data } = await api.post(`/invites/${token}/accept`, payload);
   return { data };
 }
