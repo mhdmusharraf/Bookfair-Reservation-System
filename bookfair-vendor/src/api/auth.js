@@ -1,15 +1,10 @@
 import { api } from "./client";
 
-// Real endpoints (adjust paths to backend):
-// POST /auth/vendor/signup { businessName, email, password }
-// POST /auth/login { email, password }
-// GET  /invites/:token
-// POST /invites/:token/accept { password }
-
 export async function signupVendor(payload) {
   if (!api.defaults.baseURL) {
-    // mock success
-    return { data: { token: "mock-token", user: { businessName: payload.businessName, email: payload.email, role: "VENDOR" } } };
+    // We dont return a token here.
+    console.log("Mock Signup Request:", payload);
+    return { data: { success: true, status: 'pending' } };
   }
   const { data } = await api.post("/auth/vendor/signup", payload);
   return { data };
@@ -17,8 +12,27 @@ export async function signupVendor(payload) {
 
 export async function login(payload) {
   if (!api.defaults.baseURL) {
-    return { data: { token: "mock-token", user: { businessName: "Demo Books", email: payload.email, role: "VENDOR" } } };
+    if (payload.email === "pending@vendor.com") {
+      return { data: { user: { status: "pending" } } };
+    }
+    if (payload.email === "rejected@vendor.com") {
+      return { data: { user: { status: "rejected" } } };
+    }
+    
+    return { 
+      data: { 
+        token: "mock-token", 
+        user: { 
+          businessName: "Demo Books", 
+          email: payload.email, 
+          role: "VENDOR", 
+          status: "accepted" 
+        } 
+      } 
+    };
   }
+  
+  // Real API call
   const { data } = await api.post("/auth/login", payload);
   return { data };
 }
