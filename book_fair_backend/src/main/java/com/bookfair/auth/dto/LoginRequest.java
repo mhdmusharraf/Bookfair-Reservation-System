@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class AuthRequest {
+public class LoginRequest {
 
     @Schema(example = "info@bookco.lk")
     @NotBlank(message = "Email is required")
