@@ -1,9 +1,12 @@
 package com.bookfair.stall.controller;
 
+import com.bookfair.auth.entity.User;
+import com.bookfair.auth.service.UserService;
 import com.bookfair.stall.dto.StallCollectionResponse;
 import com.bookfair.stall.dto.StallRequest;
 import com.bookfair.stall.dto.StallResponse;
 import com.bookfair.stall.entity.StallSize;
+import com.bookfair.stall.service.StallHoldService;
 import com.bookfair.stall.service.StallService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class StallController {
 
     private final StallService stallService;
+    private final StallHoldService stallHoldService;
+    private final UserService userService;
 
     @GetMapping
     @Operation(summary = "Retrieve stalls", description = "Optionally filter by availability and size")
@@ -53,6 +59,33 @@ public class StallController {
     @Operation(summary = "Release a stall", description = "Marks a stall as available again")
     public ResponseEntity<StallResponse> releaseStall(@PathVariable Long id) {
         return ResponseEntity.ok(stallService.releaseStall(id));
+    }
+
+    @PostMapping("/{id}/hold")
+    @PreAuthorize("hasRole('VENDOR')")
+    @Operation(summary = "Hold a stall", description = "Temporarily marks a stall as in-progress for the logged in vendor")
+    public ResponseEntity<Void> holdStall(@PathVariable Long id) {
+        User user = userService.getCurrentUser();
+        stallHoldService.hold(id, user);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/hold")
+    @PreAuthorize("hasRole('VENDOR')")
+    @Operation(summary = "Release a held stall for the current vendor")
+    public ResponseEntity<Void> releaseHold(@PathVariable Long id) {
+        User user = userService.getCurrentUser();
+        stallHoldService.release(id, user, false);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/holds")
+    @PreAuthorize("hasRole('VENDOR')")
+    @Operation(summary = "Release every hold created by the current vendor")
+    public ResponseEntity<Void> releaseAllHolds() {
+        User user = userService.getCurrentUser();
+        stallHoldService.releaseAllForUser(user);
+        return ResponseEntity.noContent().build();
     }
 }
 

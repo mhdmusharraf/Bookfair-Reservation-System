@@ -37,6 +37,9 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center">
       <Paper className="p-6 w-full max-w-md">
         <Typography variant="h5" className="font-bold mb-4">Vendor Signup</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Once you create an account our employee team will approve your first login before you can see the dashboard.
+        </Typography>
         <form onSubmit={onSubmit} className="space-y-3">
           <TextField
             fullWidth

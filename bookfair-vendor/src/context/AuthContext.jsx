@@ -1,6 +1,7 @@
 import React from 'react'
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { attachToken } from "../api/client";
+import { releaseAllStallHolds } from "../api/stalls";
 
 const AuthCtx = createContext();
 
@@ -14,19 +15,46 @@ export function AuthProvider({ children }) {
     attachToken(token);
   }, [token]);
 
-  const login = (token, user) => {
-    setToken(token); setUser(user);
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
+  const persistUser = (userData) => {
+    if (!userData) {
+      localStorage.removeItem("user");
+      setUser(null);
+      return;
+    }
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const login = (tokenValue, userData) => {
+    setToken(tokenValue);
+    localStorage.setItem("token", tokenValue);
+    persistUser(userData);
+  };
+
+  const logout = async () => {
+    try {
+      await releaseAllStallHolds();
+    } catch (error) {
+      console.warn("Failed to release holds during logout", error);
+    }
     setToken(null); setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   };
 
-  const value = useMemo(()=>({ token, user, login, logout }), [token, user]);
+  const updateUser = (updater) => {
+    setUser((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : { ...(prev || {}), ...updater };
+      if (!next) {
+        localStorage.removeItem("user");
+        return null;
+      }
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const value = useMemo(()=>({ token, user, login, logout, updateUser }), [token, user]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 

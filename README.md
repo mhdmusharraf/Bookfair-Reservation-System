@@ -56,3 +56,18 @@ Both front-ends are Vite applications that expect the API base URL to be provide
 ## Production builds
 To produce optimized assets run `npm run build` inside each front-end directory. The backend can be packaged with `./mvnw clean package` which generates a runnable JAR in `book_fair_backend/target`.
 
+## Pre-defined employee accounts
+Employee self-signup has been disabled. Four operational accounts are provisioned automatically when the backend starts (see `book_fair_backend/src/main/resources/application.yml`). Use the following credentials to access the employee portal:
+
+| Team | Email | Password | Phone |
+| --- | --- | --- | --- |
+| Operations Desk A | `ops-a@bookfair.lk` | `OpsDesk@2024` | +94 770 000 101 |
+| Operations Desk B | `ops-b@bookfair.lk` | `OpsDesk@2024` | +94 770 000 102 |
+| Finance Review | `finance@bookfair.lk` | `Finance@2024` | +94 770 000 103 |
+| Floor Supervisor | `floor@bookfair.lk` | `Floor@2024` | +94 770 000 104 |
+
+### Updating or adding seeded employees
+1. Edit the `bookfair.employee-seed.accounts` list inside `book_fair_backend/src/main/resources/application.yml`. Each entry requires `businessName`, `contactNumber`, `email`, and `password` fields.
+2. Restart the backend. Any account whose email is not already present in the `users` table will be created automatically with the EMPLOYEE role.
+3. Rotate credentials by updating the password in the YAML file and deleting the matching user row from the database (or adjust it manually) before restarting the service.
+

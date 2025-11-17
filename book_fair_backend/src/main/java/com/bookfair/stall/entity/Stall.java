@@ -1,5 +1,6 @@
 package com.bookfair.stall.entity;
 
+import com.bookfair.auth.entity.User;
 import com.bookfair.reservation.entity.Reservation;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,6 +22,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -29,7 +31,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = "reservations")
+@ToString(exclude = {"reservations", "heldBy"})
 @Entity
 @Table(name = "stalls", uniqueConstraints = {
         @UniqueConstraint(name = "uk_stalls_code", columnNames = "code")
@@ -57,5 +59,11 @@ public class Stall {
     @Builder.Default
     @ManyToMany(mappedBy = "stalls", fetch = FetchType.LAZY)
     private Set<Reservation> reservations = new HashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "held_by_user_id")
+    private User heldBy;
+
+    private LocalDateTime holdExpiresAt;
 }
 

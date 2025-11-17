@@ -9,19 +9,10 @@ async function fetchProfile(token) {
 }
 
 // ----------------------------------
-// USER SIGNUP
-// ----------------------------------
-export async function signupEmployee(payload) {
-  const { data } = await api.post("/auth/register/employee", payload);
-  const user = await fetchProfile(data.token);
-  return { data: { token: data.token, user } };
-}
-
-// ----------------------------------
 // LOGIN
 // ----------------------------------
 export async function login(payload) {
-  const { data } = await api.post("/auth/login", payload);
+  const { data } = await api.post("/auth/login", { ...payload, portal: "EMPLOYEE" });
   const user = await fetchProfile(data.token);
   return { data: { token: data.token, user } };
 }

@@ -20,7 +20,7 @@ export default function Shell() {
                 <Typography variant="body2" className="hidden sm:block">
                   {user.businessName} — {user.email}
                 </Typography>
-                <Button variant="outlined" size="small" onClick={()=>{ logout(); nav("/login"); }}>
+                <Button variant="outlined" size="small" onClick={async ()=>{ await logout(); nav("/login"); }}>
                   Logout
                 </Button>
               </>

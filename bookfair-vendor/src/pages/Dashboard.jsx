@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Paper, Typography, Button, Snackbar, Alert, Divider, Stack,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, CircularProgress,
@@ -11,9 +11,11 @@ import StallSvgMap from "../components/StallSvgMap";
 import StallLegend from "../components/StallLegend";
 import GenreSelector from "../components/GenreSelector";
 import PricingCard from "../components/PricingCard";
-import { fetchStalls, reserveStalls } from "../api/stalls";
+import { fetchStalls, reserveStalls, holdStall, releaseStallHold, releaseAllStallHolds } from "../api/stalls";
 import { fetchMyReservedStallCodes } from "../api/reservations";
 import { useAuth } from "../context/AuthContext";
+import VendorApprovalGate from "../components/VendorApprovalGate";
+import { createStompClient } from "../utils/simpleStomp";
 
 export default function Dashboard() {
   const [stalls, setStalls] = useState([]);
@@ -23,7 +25,7 @@ export default function Dashboard() {
   const [warn, setWarn] = useState("");
   const [info, setInfo] = useState("");
 
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   // cart: Map<stallId, { stall, label, genres[] }>
   const [selectedStalls, setSelectedStalls] = useState(new Map());
@@ -84,6 +86,48 @@ export default function Dashboard() {
     };
   }, [user]);
 
+  useEffect(() => {
+    return () => {
+      releaseAllStallHolds().catch(() => {});
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const client = createStompClient(token);
+    client.connect();
+    const subscriptionId = client.subscribe("/topic/stalls/status", (payload) => {
+      if (!payload?.stallId) return;
+      setStalls((prev) => prev.map((stall) =>
+        stall.id === payload.stallId
+          ? { ...stall, status: payload.status, reserved: payload.status === "BOOKED" }
+          : stall
+      ));
+      setServerBookedIds((prev) => {
+        const next = new Set(prev);
+        if (payload.status === "BOOKED") {
+          next.add(String(payload.stallId));
+        } else {
+          next.delete(String(payload.stallId));
+        }
+        return next;
+      });
+      setServerInProgressIds((prev) => {
+        const next = new Set(prev);
+        if (payload.status === "IN_PROGRESS") {
+          next.add(String(payload.stallId));
+        } else {
+          next.delete(String(payload.stallId));
+        }
+        return next;
+      });
+    });
+    return () => {
+      client.unsubscribe(subscriptionId);
+      client.disconnect();
+    };
+  }, [token]);
+
   const selectedStallIds = useMemo(
     () => new Set(selectedStalls.keys()),
     [selectedStalls]
@@ -100,7 +144,7 @@ export default function Dashboard() {
   );
 
   // Accept label from map (S-## / M-## / L-##)
-  const handleStallClick = (stall, label) => {
+  const handleStallClick = async (stall, label) => {
     if (
       !stall ||
       stall.isPlaceholder ||
@@ -111,9 +155,7 @@ export default function Dashboard() {
       return;
 
     if (selectedStalls.has(stall.id)) {
-      const next = new Map(selectedStalls);
-      next.delete(stall.id);
-      setSelectedStalls(next);
+      await removeFromCart(stall.id);
     } else {
       if (selectedStalls.size + bookedCount >= 3) {
         setWarn("Maximum 3 stalls can be selected per business.");
@@ -126,17 +168,23 @@ export default function Dashboard() {
     }
   };
 
-  const handleSaveStallAndGenres = () => {
+  const handleSaveStallAndGenres = async () => {
     if (tempGenres.length === 0) {
       setWarn("Please select at least one genre for this stall.");
       return;
     }
-    const next = new Map(selectedStalls);
-    next.set(currentStall.id, { stall: currentStall, label: currentLabel, genres: tempGenres });
-    setSelectedStalls(next);
-    setIsGenreModalOpen(false);
-    setCurrentStall(null);
-    setCurrentLabel("");
+    try {
+      await holdStall(currentStall.id);
+      const next = new Map(selectedStalls);
+      next.set(currentStall.id, { stall: currentStall, label: currentLabel, genres: tempGenres });
+      setSelectedStalls(next);
+      setIsGenreModalOpen(false);
+      setCurrentStall(null);
+      setCurrentLabel("");
+    } catch (error) {
+      const message = error?.response?.data?.message || error?.message || "Unable to hold stall";
+      setWarn(message);
+    }
   };
 
   const handleOpenConfirmModal = () => {
@@ -187,6 +235,17 @@ export default function Dashboard() {
     await handleFinalConfirm();
   };
 
+  const removeFromCart = useCallback(async (stallId) => {
+    const next = new Map(selectedStalls);
+    next.delete(stallId);
+    setSelectedStalls(next);
+    try {
+      await releaseStallHold(stallId);
+    } catch (error) {
+      console.error("Failed to release stall hold", error);
+    }
+  }, [selectedStalls]);
+
   // --- Confirm modal pricing helpers ---
   const PRICES = { SMALL: 40000, MEDIUM: 70000, LARGE: 100000 };
   const currency = useMemo(
@@ -210,6 +269,7 @@ export default function Dashboard() {
   );
 
   return (
+    <VendorApprovalGate>
     <div className="space-y-4">
       {/* ===== Row 1: Pricing strip under navbar (full width, horizontal) ===== */}
       <PricingCard selectedStalls={selectedStalls} />
@@ -296,7 +356,7 @@ export default function Dashboard() {
                       }}
                       secondaryAction={
                         <Tooltip title="Remove from Cart">
-                          <IconButton edge="end" aria-label="delete" onClick={() => handleStallClick(item.stall)}>
+                          <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(item.stall.id)}>
                             <DeleteIcon />
                           </IconButton>
                         </Tooltip>
@@ -555,5 +615,6 @@ export default function Dashboard() {
         </DialogActions>
       </Dialog>
     </div>
+    </VendorApprovalGate>
   );
 }

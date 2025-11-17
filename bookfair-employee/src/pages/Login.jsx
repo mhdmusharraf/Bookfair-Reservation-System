@@ -1,9 +1,9 @@
 import React from "react";
 import { useState } from "react";
-import { Paper, TextField, Button, Typography, Stack } from "@mui/material";
+import { Paper, TextField, Button, Typography, Stack, Alert } from "@mui/material";
 import { login as apiLogin } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -26,7 +26,6 @@ export default function Login() {
       setErr(message);
     } finally {
       setLoading(false);
-      console.log("Submitting login form");
     }
   };
 
@@ -75,13 +74,10 @@ export default function Login() {
             >
               Login
             </Button>
-            <Button
-              component={Link}
-              to="/signup"
-              sx={{ textTransform: "none" }}
-            >
-              Don't have an account? Signup
-            </Button>
+            <Alert severity="info">
+              Use one of the seeded employee accounts listed in the README. Contact
+              an administrator if you need the credentials rotated.
+            </Alert>
           </Stack>
         </form>
       </Paper>

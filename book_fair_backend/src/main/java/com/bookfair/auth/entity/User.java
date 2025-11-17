@@ -1,5 +1,6 @@
 package com.bookfair.auth.entity;
 
+import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -66,6 +67,13 @@ public class User implements UserDetails {
     private Set<Role> roles = new HashSet<>();
 
     private LocalDateTime createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private AccountStatus status = AccountStatus.PENDING_APPROVAL;
+
+    private LocalDateTime approvedAt;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

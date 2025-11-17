@@ -47,3 +47,26 @@ server:
 logging:
   level:
     com.bookfair: INFO
+
+bookfair:
+  stalls:
+    hold-duration-minutes: 15
+  employee-seed:
+    enabled: true
+    accounts:
+      - businessName: Operations Desk A
+        contactNumber: "+94 770 000 101"
+        email: ops-a@bookfair.lk
+        password: OpsDesk@2024
+      - businessName: Operations Desk B
+        contactNumber: "+94 770 000 102"
+        email: ops-b@bookfair.lk
+        password: OpsDesk@2024
+      - businessName: Finance Review
+        contactNumber: "+94 770 000 103"
+        email: finance@bookfair.lk
+        password: Finance@2024
+      - businessName: Floor Supervisor
+        contactNumber: "+94 770 000 104"
+        email: floor@bookfair.lk
+        password: Floor@2024

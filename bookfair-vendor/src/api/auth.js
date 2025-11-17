@@ -14,7 +14,7 @@ export async function signupVendor(payload) {
 }
 
 export async function login(payload) {
-  const { data } = await api.post("/auth/login", payload);
+  const { data } = await api.post("/auth/login", { ...payload, portal: "VENDOR" });
   const user = await fetchProfile(data.token);
   return { data: { token: data.token, user } };
 }
