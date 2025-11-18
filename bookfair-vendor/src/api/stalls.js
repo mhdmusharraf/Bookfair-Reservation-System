@@ -46,3 +46,17 @@ export async function reserveStalls({ reservations }) {
   const { data } = await api.post("/reservations", { stallIds });
   return { data };
 }
+
+export async function holdStall(stallId) {
+  if (!stallId) throw new Error("Stall id is required");
+  await api.post(`/stalls/${stallId}/hold`);
+}
+
+export async function releaseStallHold(stallId) {
+  if (!stallId) return;
+  await api.delete(`/stalls/${stallId}/hold`);
+}
+
+export async function releaseAllStallHolds() {
+  await api.delete("/stalls/holds");
+}

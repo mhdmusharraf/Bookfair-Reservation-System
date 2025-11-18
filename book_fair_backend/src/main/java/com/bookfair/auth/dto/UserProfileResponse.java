@@ -1,5 +1,6 @@
 package com.bookfair.auth.dto;
 
+import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -12,21 +13,24 @@ import java.util.Set;
 @Builder
 public class UserProfileResponse {
 
-    Long userId;
-    String email;
-    String role;
-    Boolean isActive;
+    @Schema(example = "1")
+    Long id;
 
-    // Vendor-specific (null if EMPLOYEE)
-    Long vendorId;
+    @Schema(example = "The Book Company")
     String businessName;
-    String phone;
-    String address;
 
-    // Employee-specific (null if VENDOR)
-    Long employeeId;
-    String fullName;
-    String department;
-    String employeePhone;
+    @Schema(example = "0112345678")
+    String contactNumber;
+
+    @Schema(example = "info@bookco.lk")
+    String email;
+
+    Set<Role> roles;
+
+    LocalDateTime createdAt;
+
+    AccountStatus status;
+
+    LocalDateTime approvedAt;
 }
 
