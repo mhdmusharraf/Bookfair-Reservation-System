@@ -6,6 +6,7 @@ import JoinRequests from "./pages/JoinRequests";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Header from "./components/Header";
 import RegisteredBusinesses from "./pages/RegisteredBusinesses";
+import PaymentHistory from "./pages/PaymentHistory";
 
 const EMPLOYEE_PORTAL_ROLES = ["EMPLOYEE", "ADMIN"];
 
@@ -79,6 +80,14 @@ export default function App() {
             element={
               <Protected>
                 <RegisteredBusinesses/>
+              </Protected>
+            }
+          />
+          <Route
+            path="/payment-history"
+            element={
+              <Protected>
+                <PaymentHistory/>
               </Protected>
             }
           />
