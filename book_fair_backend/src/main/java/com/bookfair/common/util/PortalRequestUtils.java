@@ -12,6 +12,7 @@ import java.util.Optional;
 public final class PortalRequestUtils {
 
     public static final String PORTAL_HEADER = "X-Portal";
+    public static final String PORTAL_QUERY_PARAMETER = "portal";
 
     private PortalRequestUtils() {
     }
@@ -20,7 +21,11 @@ public final class PortalRequestUtils {
         if (request == null) {
             return Optional.empty();
         }
-        return resolvePortal(request.getHeader(PORTAL_HEADER));
+        Optional<LoginPortal> fromHeader = resolvePortal(request.getHeader(PORTAL_HEADER));
+        if (fromHeader.isPresent()) {
+            return fromHeader;
+        }
+        return resolvePortal(request.getParameter(PORTAL_QUERY_PARAMETER));
     }
 
     public static Optional<LoginPortal> resolvePortal(String headerValue) {
