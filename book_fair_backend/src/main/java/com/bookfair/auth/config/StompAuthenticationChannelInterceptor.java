@@ -18,12 +18,11 @@ import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class StompAuthenticationChannelInterceptor implements ChannelInterceptor {
-
-    private static final String ACCESS_TOKEN_COOKIE = "access_token";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -53,21 +52,45 @@ public class StompAuthenticationChannelInterceptor implements ChannelInterceptor
     }
 
     private String resolveToken(StompHeaderAccessor accessor) {
-        String authHeader = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
+        String token = extractFromAuthorizationHeader(accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION));
+        if (StringUtils.hasText(token)) {
+            return token;
+        }
+
+        List<String> cookieHeaders = accessor.getNativeHeader(HttpHeaders.COOKIE);
+        if (cookieHeaders != null && !cookieHeaders.isEmpty()) {
+            token = cookieHeaders.stream()
+                    .flatMap(header -> Arrays.stream(header.split(";")))
+                    .map(String::trim)
+                    .filter(entry -> entry.startsWith(AccessTokenHandshakeInterceptor.ACCESS_TOKEN_COOKIE + "="))
+                    .map(entry -> entry.substring((AccessTokenHandshakeInterceptor.ACCESS_TOKEN_COOKIE + "=").length()))
+                    .filter(StringUtils::hasText)
+                    .findFirst()
+                    .orElse(null);
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
+        }
+
+        Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+        if (sessionAttributes != null) {
+            token = extractFromAuthorizationHeader((String) sessionAttributes.get(AccessTokenHandshakeInterceptor.AUTHORIZATION_HEADER_ATTRIBUTE));
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
+            Object cookieToken = sessionAttributes.get(AccessTokenHandshakeInterceptor.ACCESS_TOKEN_ATTRIBUTE);
+            if (cookieToken instanceof String cookieTokenValue && StringUtils.hasText(cookieTokenValue)) {
+                return cookieTokenValue;
+            }
+        }
+
+        return null;
+    }
+
+    private String extractFromAuthorizationHeader(String authHeader) {
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
-        List<String> cookieHeaders = accessor.getNativeHeader(HttpHeaders.COOKIE);
-        if (cookieHeaders == null || cookieHeaders.isEmpty()) {
-            return null;
-        }
-        return cookieHeaders.stream()
-                .flatMap(header -> Arrays.stream(header.split(";")))
-                .map(String::trim)
-                .filter(entry -> entry.startsWith(ACCESS_TOKEN_COOKIE + "="))
-                .map(entry -> entry.substring((ACCESS_TOKEN_COOKIE + "=").length()))
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse(null);
+        return null;
     }
 }
