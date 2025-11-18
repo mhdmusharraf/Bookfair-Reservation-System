@@ -3,7 +3,7 @@ spring:
     name: bookfair-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/book_fair
+    url: jdbc:postgresql://localhost:5433/book_fair
     username: bookuser
     password: bookpass
     driver-class-name: org.postgresql.Driver
@@ -46,7 +46,7 @@ security:
     cookie-same-site: Lax
 
 server:
-  port: 8080
+  port: 8088
 
 logging:
   level:
