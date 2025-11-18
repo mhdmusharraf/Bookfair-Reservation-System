@@ -1,5 +1,5 @@
 import React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Paper, TextField, Button, Typography, Stack } from "@mui/material";
 import { signupVendor } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
@@ -10,10 +10,20 @@ export default function Signup() {
   const [contactNumber, setContactNumber] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { login, user, isAuthenticating } = useAuth();
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!isAuthenticating && user) {
+      nav("/");
+    }
+  }, [isAuthenticating, user, nav]);
+
+  if (isAuthenticating) {
+    return <div className="flex justify-center py-12">Checking session...</div>;
+  }
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +35,7 @@ export default function Signup() {
         email,
         password,
       });
-      login(data.token, data.user);
+      login(data.user);
       nav("/");
     } catch (error) {
       const message = error?.response?.data?.message || "Signup failed";
@@ -37,6 +47,9 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center">
       <Paper className="p-6 w-full max-w-md">
         <Typography variant="h5" className="font-bold mb-4">Vendor Signup</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Once you create an account our employee team will approve your first login before you can see the dashboard.
+        </Typography>
         <form onSubmit={onSubmit} className="space-y-3">
           <TextField
             fullWidth

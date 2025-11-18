@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
 @Builder
 public class AuthResponse {
 
-    @Schema(description = "JWT access token", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
-    String token;
+    @Schema(description = "Authenticated user profile")
+    UserProfileResponse user;
 
-    @Schema(description = "Token expiry timestamp")
+    @Schema(description = "Access token expiry timestamp")
     LocalDateTime expiresAt;
 }
 

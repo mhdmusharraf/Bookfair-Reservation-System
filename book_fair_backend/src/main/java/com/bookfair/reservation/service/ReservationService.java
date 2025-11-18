@@ -2,6 +2,7 @@ package com.bookfair.reservation.service;
 
 import com.bookfair.auth.entity.User;
 import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
 import com.bookfair.common.service.EmailService;
 import com.bookfair.common.service.QrCodeService;
@@ -9,6 +10,7 @@ import com.bookfair.reservation.dto.ReservationRequest;
 import com.bookfair.reservation.dto.ReservationResponse;
 import com.bookfair.reservation.entity.Reservation;
 import com.bookfair.reservation.repository.ReservationRepository;
+import com.bookfair.stall.service.StallHoldService;
 import com.bookfair.stall.entity.Stall;
 import com.bookfair.stall.entity.StallStatus;
 import com.bookfair.stall.repository.StallRepository;
@@ -34,10 +36,15 @@ public class ReservationService {
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private final StallHoldService stallHoldService;
 
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
         List<Reservation> existingReservations = reservationRepository.findByUser(user);
+
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new IllegalStateException("Vendor account is pending employee approval");
+        }
         long existingStalls = existingReservations.stream()
                 .mapToLong(reservation -> reservation.getStalls().size())
                 .sum();
@@ -53,8 +60,11 @@ public class ReservationService {
 
         stalls.forEach(stall -> {
             StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
-            if (status != StallStatus.AVAILABLE) {
+            if (status == StallStatus.BOOKED) {
                 throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
+            }
+            if (status == StallStatus.IN_PROGRESS && stall.getHeldBy() != null && !stall.getHeldBy().getId().equals(user.getId())) {
+                throw new IllegalStateException("Stall " + stall.getCode() + " is being held by another vendor");
             }
         });
 
@@ -65,8 +75,9 @@ public class ReservationService {
                 .emailSentTo(user.getEmail())
                 .build();
 
+        stallHoldService.finalizeForReservation(stalls, user);
+
         stalls.forEach(stall -> {
-            stall.setStatus(StallStatus.BOOKED);
             reservation.getStalls().add(stall);
             stall.getReservations().add(reservation);
         });

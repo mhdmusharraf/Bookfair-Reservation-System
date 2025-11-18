@@ -1,5 +1,6 @@
 package com.bookfair.auth.dto;
 
+import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -27,5 +28,9 @@ public class UserProfileResponse {
     Set<Role> roles;
 
     LocalDateTime createdAt;
+
+    AccountStatus status;
+
+    LocalDateTime approvedAt;
 }
 

@@ -55,8 +55,8 @@ export default function Header() {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => {
-                    logout();
+                  onClick={async () => {
+                    await logout();
                     nav("/login");
                   }}
                 >

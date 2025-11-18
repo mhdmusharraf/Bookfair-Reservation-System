@@ -1,5 +1,6 @@
 package com.bookfair.stall.service;
 
+import com.bookfair.common.realtime.RealTimeGateway;
 import com.bookfair.stall.dto.StallCollectionResponse;
 import com.bookfair.stall.dto.StallRequest;
 import com.bookfair.stall.dto.StallResponse;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -21,9 +23,12 @@ import java.util.List;
 public class StallService {
 
     private final StallRepository stallRepository;
+    private final RealTimeGateway realTimeGateway;
 
     public StallCollectionResponse getStalls(boolean availableOnly, StallSize sizeFilter) {
-        List<Stall> allStalls = stallRepository.findAll();
+        List<Stall> allStalls = stallRepository.findAll().stream()
+                .map(this::refreshHoldIfExpired)
+                .toList();
 
         List<Stall> filtered = allStalls.stream()
                 .filter(stall -> {
@@ -77,6 +82,7 @@ public class StallService {
         stall.getReservations().clear();
         stall.setStatus(StallStatus.AVAILABLE);
         Stall saved = stallRepository.save(stall);
+        realTimeGateway.publishStallStatus(saved);
         return toResponse(saved);
     }
 
@@ -94,6 +100,19 @@ public class StallService {
 
     private StallStatus resolveStatus(Stall stall) {
         return stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
+    }
+
+    private Stall refreshHoldIfExpired(Stall stall) {
+        if (stall.getStatus() == StallStatus.IN_PROGRESS && stall.getHoldExpiresAt() != null
+                && stall.getHoldExpiresAt().isBefore(LocalDateTime.now())) {
+            stall.setStatus(StallStatus.AVAILABLE);
+            stall.setHeldBy(null);
+            stall.setHoldExpiresAt(null);
+            Stall saved = stallRepository.save(stall);
+            realTimeGateway.publishStallStatus(saved);
+            return saved;
+        }
+        return stall;
     }
 }
 
