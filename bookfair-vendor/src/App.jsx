@@ -9,8 +9,11 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Shell from "./components/Shell";
 
 function Protected({ children }) {
-  const { token } = useAuth();
-  return token ? children : <Navigate to="/login" replace />;
+  const { user, isAuthenticating } = useAuth();
+  if (isAuthenticating) {
+    return <div className="flex justify-center py-12">Checking session...</div>;
+  }
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {

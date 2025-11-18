@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { createStompClient } from "../utils/simpleStomp";
 
 export default function VendorApprovalGate({ children }) {
-  const { user, token, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [open, setOpen] = useState(() => user?.status && user.status !== "ACTIVE");
   const [lastDecision, setLastDecision] = useState(null);
 
@@ -15,10 +15,10 @@ export default function VendorApprovalGate({ children }) {
   }, [shouldBlock]);
 
   useEffect(() => {
-    if (!token || !shouldBlock) {
+    if (!user || !shouldBlock) {
       return;
     }
-    const client = createStompClient(token);
+    const client = createStompClient();
     client.connect();
     const subId = client.subscribe("/user/queue/vendor-access", (payload) => {
       setLastDecision(payload);
@@ -30,7 +30,7 @@ export default function VendorApprovalGate({ children }) {
       client.unsubscribe(subId);
       client.disconnect();
     };
-  }, [token, shouldBlock, updateUser]);
+  }, [user?.id, shouldBlock, updateUser]);
 
   return (
     <>

@@ -1,5 +1,5 @@
 import React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Paper, TextField, Button, Typography, Stack, Alert } from "@mui/material";
 import { login as apiLogin } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
@@ -8,18 +8,28 @@ import { useNavigate } from "react-router-dom";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { login, user, isAuthenticating } = useAuth();
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
+  useEffect(() => {
+    if (!isAuthenticating && user) {
+      nav("/");
+    }
+  }, [isAuthenticating, user, nav]);
+
+  if (isAuthenticating) {
+    return <div className="flex justify-center py-12">Checking session...</div>;
+  }
+
   const onSubmit = async (event) => {
     event.preventDefault();
-    setLoading(true); 
+    setLoading(true);
     setErr("");
     try {
       const { data } = await apiLogin({ email, password });
-      login(data.token, data.user);
+      login(data.user);
       nav("/");
     } catch (err) {
       const message = err?.response?.data?.message || "Invalid credentials";
