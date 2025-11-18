@@ -132,8 +132,8 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private ResponseCookie.Builder baseCookie(String name) {
-        ResponseCookie.Builder builder = ResponseCookie.from(name, "")
+    private ResponseCookie.ResponseCookieBuilder baseCookie(String name) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, "")
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .path("/");
