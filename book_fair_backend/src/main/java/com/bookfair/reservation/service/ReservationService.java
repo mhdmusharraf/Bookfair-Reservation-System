@@ -6,6 +6,7 @@ import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
 import com.bookfair.common.service.EmailService;
 import com.bookfair.common.service.QrCodeService;
+import com.bookfair.notification.service.NotificationService;
 import com.bookfair.reservation.dto.ReservationRequest;
 import com.bookfair.reservation.dto.ReservationResponse;
 import com.bookfair.reservation.entity.Reservation;
@@ -37,6 +38,7 @@ public class ReservationService {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final StallHoldService stallHoldService;
+    private final NotificationService notificationService;
 
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
@@ -91,6 +93,7 @@ public class ReservationService {
 
         List<User> employees = userRepository.findAllByRole(Role.EMPLOYEE);
         emailService.sendReservationNotificationToEmployees(savedReservation, employees, qrCodeBytes);
+        notificationService.notifyEmployeesOfReservation(savedReservation);
 
         log.info("Reservation {} created for user {}", savedReservation.getId(), user.getEmail());
         return toResponse(savedReservation);

@@ -1,10 +1,13 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
+import { AppBar, Toolbar, Typography, Box, Button, Badge } from "@mui/material";
 import { Outlet, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
+import NotificationsMenu from "./NotificationsMenu";
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const nav = useNavigate();
 
   return (
@@ -28,7 +31,11 @@ export default function Header() {
             color="inherit"
             sx={{ textTransform: "none" }}
           >
-            Join Requests
+            <Badge color="error" badgeContent={unreadCount} invisible={unreadCount === 0}>
+              <Box component="span" sx={{ display: "inline-flex", minWidth: 90 }}>
+                Join Requests
+              </Box>
+            </Badge>
           </Button>
           <Button
             component={Link}
@@ -47,11 +54,17 @@ export default function Header() {
             Payment History
           </Button>
           <Box className="ml-auto flex items-center gap-4">
+            <NotificationsMenu />
             {user && (
               <>
-                <Typography variant="body2" className="hidden sm:block">
-                  {user.email}
-                </Typography>
+                <Box className="hidden sm:flex flex-col text-right">
+                  <Typography variant="body2" fontWeight="bold">
+                    {user.businessName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {user.email}
+                  </Typography>
+                </Box>
                 <Button
                   variant="outlined"
                   size="small"
