@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
   };
 
   const login = (tokenValue, userData) => {
+    attachToken(tokenValue);
     setToken(tokenValue);
     localStorage.setItem("token", tokenValue);
     persistUser(userData);
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.warn("Failed to release holds during logout", error);
     }
+    attachToken(null);  
     setToken(null); setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
