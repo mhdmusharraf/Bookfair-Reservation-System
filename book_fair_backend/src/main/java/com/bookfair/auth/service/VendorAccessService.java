@@ -7,7 +7,8 @@ import com.bookfair.auth.repository.VendorAccessRequestRepository;
 import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.VendorAccessRequestStatus;
 import com.bookfair.common.realtime.RealTimeGateway;
-import jakarta.transaction.Transactional;
+//import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

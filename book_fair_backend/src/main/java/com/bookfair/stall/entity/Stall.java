@@ -21,6 +21,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import jakarta.persistence.ManyToOne;
+
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
