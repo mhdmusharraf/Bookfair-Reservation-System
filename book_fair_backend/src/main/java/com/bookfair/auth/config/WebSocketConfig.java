@@ -14,6 +14,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthenticationChannelInterceptor stompAuthenticationChannelInterceptor;
+    private final AccessTokenHandshakeInterceptor accessTokenHandshakeInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -26,9 +27,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("http://localhost:5173", "http://localhost:5174", "*")
+                .addInterceptors(accessTokenHandshakeInterceptor)
                 .withSockJS();
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:5173", "http://localhost:5174", "*");
+                .setAllowedOriginPatterns("http://localhost:5173", "http://localhost:5174", "*")
+                .addInterceptors(accessTokenHandshakeInterceptor);
     }
 
     @Override
