@@ -1,6 +1,8 @@
 package com.bookfair.auth.security;
 
 import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.common.constants.LoginPortal;
+import com.bookfair.common.util.PortalRequestUtils;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -35,7 +38,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        final String jwt = resolveToken(request);
+        LoginPortal portal = PortalRequestUtils.resolvePortal(request).orElse(null);
+        final String jwt = resolveToken(request, portal);
         if (!StringUtils.hasText(jwt)) {
             filterChain.doFilter(request, response);
             return;
@@ -53,7 +57,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(userEmail) && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userRepository.findByEmail(userEmail).orElse(null);
-            if (userDetails != null && jwtService.isAccessTokenValid(jwt, userDetails)) {
+            boolean valid = portal == null
+                    ? jwtService.isAccessTokenValid(jwt, userDetails)
+                    : jwtService.isAccessTokenValidForPortal(jwt, userDetails, portal);
+            if (userDetails != null && valid) {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -64,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String resolveToken(HttpServletRequest request) {
+    private String resolveToken(HttpServletRequest request, LoginPortal portal) {
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
@@ -73,8 +80,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (cookies == null || cookies.length == 0) {
             return null;
         }
+        if (portal != null) {
+            return Arrays.stream(cookies)
+                    .filter(cookie -> PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal).equals(cookie.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+        List<String> candidateNames = PortalRequestUtils.cookieNamesForAllPortals(ACCESS_TOKEN_COOKIE);
         return Arrays.stream(cookies)
-                .filter(cookie -> ACCESS_TOKEN_COOKIE.equals(cookie.getName()))
+                .filter(cookie -> candidateNames.contains(cookie.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);

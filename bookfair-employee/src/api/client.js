@@ -8,6 +8,12 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use((config) => {
+  config.headers = config.headers || {};
+  config.headers["X-Portal"] = "EMPLOYEE";
+  return config;
+});
+
 let refreshPromise = null;
 
 function requestRefresh() {

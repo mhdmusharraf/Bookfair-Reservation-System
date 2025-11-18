@@ -1,5 +1,6 @@
 package com.bookfair.auth.security;
 
+import com.bookfair.common.constants.LoginPortal;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 
 @Slf4j
@@ -25,6 +27,7 @@ import java.util.function.Function;
 public class JwtService {
 
     private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String PORTAL_CLAIM = "portal";
     private static final String ACCESS_TOKEN = "ACCESS";
     private static final String REFRESH_TOKEN = "REFRESH";
 
@@ -37,12 +40,18 @@ public class JwtService {
     @Value("${security.jwt.refresh-expiration-days:7}")
     private long refreshExpirationDays;
 
-    public String generateAccessToken(UserDetails userDetails) {
-        return buildToken(Map.of(TOKEN_TYPE_CLAIM, ACCESS_TOKEN), userDetails, getAccessTokenTtlSeconds());
+    public String generateAccessToken(UserDetails userDetails, LoginPortal portal) {
+        return buildToken(Map.of(
+                TOKEN_TYPE_CLAIM, ACCESS_TOKEN,
+                PORTAL_CLAIM, portal.name()
+        ), userDetails, getAccessTokenTtlSeconds());
     }
 
-    public String generateRefreshToken(UserDetails userDetails) {
-        return buildToken(Map.of(TOKEN_TYPE_CLAIM, REFRESH_TOKEN), userDetails, getRefreshTokenTtlSeconds());
+    public String generateRefreshToken(UserDetails userDetails, LoginPortal portal) {
+        return buildToken(Map.of(
+                TOKEN_TYPE_CLAIM, REFRESH_TOKEN,
+                PORTAL_CLAIM, portal.name()
+        ), userDetails, getRefreshTokenTtlSeconds());
     }
 
     public boolean isAccessTokenValid(String token, UserDetails userDetails) {
@@ -51,6 +60,14 @@ public class JwtService {
 
     public boolean isRefreshTokenValid(String token, UserDetails userDetails) {
         return isTokenValid(token, userDetails) && REFRESH_TOKEN.equalsIgnoreCase(extractTokenType(token));
+    }
+
+    public boolean isAccessTokenValidForPortal(String token, UserDetails userDetails, LoginPortal portal) {
+        return isAccessTokenValid(token, userDetails) && portalMatches(token, portal);
+    }
+
+    public boolean isRefreshTokenValidForPortal(String token, UserDetails userDetails, LoginPortal portal) {
+        return isRefreshTokenValid(token, userDetails) && portalMatches(token, portal);
     }
 
     public String extractUsername(String token) {
@@ -64,6 +81,17 @@ public class JwtService {
 
     public String extractTokenType(String token) {
         return extractClaim(token, claims -> claims.get(TOKEN_TYPE_CLAIM, String.class));
+    }
+
+    public Optional<LoginPortal> extractPortal(String token) {
+        return Optional.ofNullable(extractClaim(token, claims -> claims.get(PORTAL_CLAIM, String.class)))
+                .map(value -> {
+                    try {
+                        return LoginPortal.valueOf(value);
+                    } catch (IllegalArgumentException ex) {
+                        return null;
+                    }
+                });
     }
 
     public long getAccessTokenTtlSeconds() {
@@ -90,6 +118,12 @@ public class JwtService {
     private boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    private boolean portalMatches(String token, LoginPortal portal) {
+        return portal == null || extractPortal(token)
+                .map(portal::equals)
+                .orElse(false);
     }
 
     private boolean isTokenExpired(String token) {

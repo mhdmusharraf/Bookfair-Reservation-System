@@ -3,6 +3,7 @@ package com.bookfair.auth.config;
 import com.bookfair.auth.entity.User;
 import com.bookfair.auth.repository.UserRepository;
 import com.bookfair.auth.security.JwtService;
+import com.bookfair.common.util.PortalRequestUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.Message;
@@ -59,11 +60,12 @@ public class StompAuthenticationChannelInterceptor implements ChannelInterceptor
 
         List<String> cookieHeaders = accessor.getNativeHeader(HttpHeaders.COOKIE);
         if (cookieHeaders != null && !cookieHeaders.isEmpty()) {
+            List<String> cookieNames = PortalRequestUtils.cookieNamesForAllPortals(AccessTokenHandshakeInterceptor.ACCESS_TOKEN_COOKIE);
             token = cookieHeaders.stream()
                     .flatMap(header -> Arrays.stream(header.split(";")))
                     .map(String::trim)
-                    .filter(entry -> entry.startsWith(AccessTokenHandshakeInterceptor.ACCESS_TOKEN_COOKIE + "="))
-                    .map(entry -> entry.substring((AccessTokenHandshakeInterceptor.ACCESS_TOKEN_COOKIE + "=").length()))
+                    .filter(entry -> cookieNames.stream().anyMatch(name -> entry.startsWith(name + "=")))
+                    .map(entry -> entry.substring(entry.indexOf('=') + 1))
                     .filter(StringUtils::hasText)
                     .findFirst()
                     .orElse(null);

@@ -7,6 +7,8 @@ import com.bookfair.auth.dto.RegisterRequest;
 import com.bookfair.auth.dto.UserProfileResponse;
 import com.bookfair.auth.entity.User;
 import com.bookfair.auth.service.UserService;
+import com.bookfair.common.constants.LoginPortal;
+import com.bookfair.common.util.PortalRequestUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -81,16 +83,19 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "Refresh access token using a valid refresh cookie")
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = readCookie(request, REFRESH_TOKEN_COOKIE)
+        LoginPortal portal = PortalRequestUtils.resolvePortal(request)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Portal header is required"));
+        String refreshToken = readCookie(request, PortalRequestUtils.cookieName(REFRESH_TOKEN_COOKIE, portal))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token missing"));
-        AuthSession session = userService.refreshSession(refreshToken);
+        AuthSession session = userService.refreshSession(refreshToken, portal);
         return respondWithSession(session, response);
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Clear authentication cookies")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
-        clearAuthCookies(response);
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        LoginPortal portal = PortalRequestUtils.resolvePortal(request).orElse(null);
+        clearAuthCookies(response, portal);
         return ResponseEntity.noContent().build();
     }
 
@@ -107,13 +112,27 @@ public class AuthController {
     }
 
     private void addAuthCookies(HttpServletResponse response, AuthSession session) {
-        writeCookie(response, ACCESS_TOKEN_COOKIE, session.getAccessToken(), session.getAccessTokenTtlSeconds());
-        writeCookie(response, REFRESH_TOKEN_COOKIE, session.getRefreshToken(), session.getRefreshTokenTtlSeconds());
+        LoginPortal portal = session.getPortal();
+        writeCookie(response,
+                PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal),
+                session.getAccessToken(),
+                session.getAccessTokenTtlSeconds());
+        writeCookie(response,
+                PortalRequestUtils.cookieName(REFRESH_TOKEN_COOKIE, portal),
+                session.getRefreshToken(),
+                session.getRefreshTokenTtlSeconds());
     }
 
-    private void clearAuthCookies(HttpServletResponse response) {
-        expireCookie(response, ACCESS_TOKEN_COOKIE);
-        expireCookie(response, REFRESH_TOKEN_COOKIE);
+    private void clearAuthCookies(HttpServletResponse response, LoginPortal portal) {
+        if (portal != null) {
+            expireCookie(response, PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal));
+            expireCookie(response, PortalRequestUtils.cookieName(REFRESH_TOKEN_COOKIE, portal));
+            return;
+        }
+        PortalRequestUtils.cookieNamesForAllPortals(ACCESS_TOKEN_COOKIE)
+                .forEach(name -> expireCookie(response, name));
+        PortalRequestUtils.cookieNamesForAllPortals(REFRESH_TOKEN_COOKIE)
+                .forEach(name -> expireCookie(response, name));
     }
 
     private void writeCookie(HttpServletResponse response, String name, String value, long maxAgeSeconds) {

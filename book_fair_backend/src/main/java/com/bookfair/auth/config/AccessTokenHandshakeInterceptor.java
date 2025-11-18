@@ -1,5 +1,7 @@
 package com.bookfair.auth.config;
 
+import com.bookfair.common.constants.LoginPortal;
+import com.bookfair.common.util.PortalRequestUtils;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
@@ -12,6 +14,7 @@ import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -34,8 +37,15 @@ public class AccessTokenHandshakeInterceptor implements HandshakeInterceptor {
             }
             Cookie[] cookies = httpRequest.getCookies();
             if (cookies != null) {
+                LoginPortal portal = PortalRequestUtils.resolvePortal(httpRequest).orElse(null);
+                String cookieName = portal != null
+                        ? PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal)
+                        : null;
+                List<String> candidates = cookieName != null
+                        ? List.of(cookieName)
+                        : PortalRequestUtils.cookieNamesForAllPortals(ACCESS_TOKEN_COOKIE);
                 Arrays.stream(cookies)
-                        .filter(cookie -> ACCESS_TOKEN_COOKIE.equals(cookie.getName()))
+                        .filter(cookie -> candidates.contains(cookie.getName()))
                         .map(Cookie::getValue)
                         .filter(StringUtils::hasText)
                         .findFirst()

@@ -57,7 +57,7 @@ public class UserService {
 
         vendorAccessService.ensurePendingRequest(user, "system");
 
-        return buildAuthSession(user);
+        return buildAuthSession(user, LoginPortal.VENDOR);
     }
 
     @Transactional
@@ -80,7 +80,7 @@ public class UserService {
 
         userRepository.save(user);
 
-        return buildAuthSession(user);
+        return buildAuthSession(user, LoginPortal.EMPLOYEE);
     }
 
     public AuthSession authenticate(LoginRequest request) {
@@ -91,20 +91,20 @@ public class UserService {
 
         User user = (User) authentication.getPrincipal();
         validatePortalAccess(user, request.getPortal());
-        return buildAuthSession(user);
+        return buildAuthSession(user, request.getPortal());
     }
 
-    public AuthSession refreshSession(String refreshToken) {
+    public AuthSession refreshSession(String refreshToken, LoginPortal portal) {
         if (!StringUtils.hasText(refreshToken)) {
             throw new AccessDeniedException("Missing refresh token");
         }
         String email = jwtService.extractUsername(refreshToken);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AccessDeniedException("Unable to resolve refresh token subject"));
-        if (!jwtService.isRefreshTokenValid(refreshToken, user)) {
+        if (!jwtService.isRefreshTokenValidForPortal(refreshToken, user, portal)) {
             throw new AccessDeniedException("Refresh token is invalid or expired");
         }
-        return buildAuthSession(user);
+        return buildAuthSession(user, portal);
     }
 
     private void validatePortalAccess(User user, LoginPortal portal) {
@@ -146,9 +146,9 @@ public class UserService {
                 .build();
     }
 
-    private AuthSession buildAuthSession(User user) {
-        String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = jwtService.generateRefreshToken(user);
+    private AuthSession buildAuthSession(User user, LoginPortal portal) {
+        String accessToken = jwtService.generateAccessToken(user, portal);
+        String refreshToken = jwtService.generateRefreshToken(user, portal);
         AuthResponse response = AuthResponse.builder()
                 .user(buildProfile(user))
                 .expiresAt(jwtService.extractExpiration(accessToken))
@@ -159,6 +159,7 @@ public class UserService {
                 .refreshToken(refreshToken)
                 .accessTokenTtlSeconds(jwtService.getAccessTokenTtlSeconds())
                 .refreshTokenTtlSeconds(jwtService.getRefreshTokenTtlSeconds())
+                .portal(portal)
                 .build();
     }
 }
