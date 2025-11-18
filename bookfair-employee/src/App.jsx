@@ -7,10 +7,12 @@ import JoinRequests from "./pages/JoinRequests";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Header from "./components/Header";
 import RegisteredBusinesses from "./pages/RegisteredBusinesses";
+import PaymentHistory from "./pages/PaymentHistory";
 
 function Protected({ children }) {
   const { token } = useAuth();
-  return token ? children : <Navigate to="/login" replace />;
+  const DISABLE_BACKEND = import.meta.env.VITE_DISABLE_BACKEND === "true";
+  return DISABLE_BACKEND || token ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -41,6 +43,14 @@ export default function App() {
             element={
               <Protected>
                 <RegisteredBusinesses/>
+              </Protected>
+            }
+          />
+          <Route
+            path="/payment-history"
+            element={
+              <Protected>
+                <PaymentHistory/>
               </Protected>
             }
           />

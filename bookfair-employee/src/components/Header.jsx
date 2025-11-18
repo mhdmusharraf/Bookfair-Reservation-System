@@ -38,6 +38,14 @@ export default function Header() {
           >
             Registered Businesses
           </Button>
+          <Button
+            component={Link}
+            to="/payment-history"
+            color="inherit"
+            sx={{ textTransform: "none" }}
+          >
+            Payment History
+          </Button>
           <Box className="ml-auto flex items-center gap-4">
             {user && (
               <>
