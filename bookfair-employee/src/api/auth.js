@@ -1,10 +1,7 @@
-import axios from "axios";
 import { api } from "./client";
 
-async function fetchProfile(token) {
-  const { data } = await api.get("/auth/me", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+async function fetchProfile() {
+  const { data } = await api.get("/auth/me");
   return data;
 }
 
@@ -12,9 +9,9 @@ async function fetchProfile(token) {
 // LOGIN
 // ----------------------------------
 export async function login(payload) {
-  const { data } = await api.post("/auth/login", { ...payload, portal: "EMPLOYEE" });
-  const user = await fetchProfile(data.token);
-  return { data: { token: data.token, user } };
+  await api.post("/auth/login", { ...payload, portal: "EMPLOYEE" });
+  const user = await fetchProfile();
+  return { data: { user } };
 }
 
 export async function validateInvite(token) {
@@ -23,7 +20,7 @@ export async function validateInvite(token) {
 }
 
 export async function acceptInvite(token, payload) {
-  const { data } = await api.post(`/invites/${token}/accept`, payload);
-  const user = await fetchProfile(data.token);
-  return { data: { token: data.token, user } };
+  await api.post(`/invites/${token}/accept`, payload);
+  const user = await fetchProfile();
+  return { data: { user } };
 }

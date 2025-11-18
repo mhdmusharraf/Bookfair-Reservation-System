@@ -24,19 +24,59 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class JwtService {
 
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String ACCESS_TOKEN = "ACCESS";
+    private static final String REFRESH_TOKEN = "REFRESH";
+
     @Value("${security.jwt.secret}")
     private String secret;
 
-    @Value("${security.jwt.expiration-minutes:60}")
-    private long expirationMinutes;
+    @Value("${security.jwt.access-expiration-minutes:${security.jwt.expiration-minutes:60}}")
+    private long accessExpirationMinutes;
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(Map.of(), userDetails);
+    @Value("${security.jwt.refresh-expiration-days:7}")
+    private long refreshExpirationDays;
+
+    public String generateAccessToken(UserDetails userDetails) {
+        return buildToken(Map.of(TOKEN_TYPE_CLAIM, ACCESS_TOKEN), userDetails, getAccessTokenTtlSeconds());
     }
 
-    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(Map.of(TOKEN_TYPE_CLAIM, REFRESH_TOKEN), userDetails, getRefreshTokenTtlSeconds());
+    }
+
+    public boolean isAccessTokenValid(String token, UserDetails userDetails) {
+        return isTokenValid(token, userDetails) && ACCESS_TOKEN.equalsIgnoreCase(extractTokenType(token));
+    }
+
+    public boolean isRefreshTokenValid(String token, UserDetails userDetails) {
+        return isTokenValid(token, userDetails) && REFRESH_TOKEN.equalsIgnoreCase(extractTokenType(token));
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public LocalDateTime extractExpiration(String token) {
+        Date expiration = extractClaim(token, Claims::getExpiration);
+        return LocalDateTime.ofInstant(expiration.toInstant(), ZoneId.systemDefault());
+    }
+
+    public String extractTokenType(String token) {
+        return extractClaim(token, claims -> claims.get(TOKEN_TYPE_CLAIM, String.class));
+    }
+
+    public long getAccessTokenTtlSeconds() {
+        return accessExpirationMinutes * 60;
+    }
+
+    public long getRefreshTokenTtlSeconds() {
+        return refreshExpirationDays * 24 * 60 * 60;
+    }
+
+    private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long validitySeconds) {
         Instant now = Instant.now();
-        Instant expiration = now.plusSeconds(expirationMinutes * 60);
+        Instant expiration = now.plusSeconds(validitySeconds);
 
         return Jwts.builder()
                 .setClaims(extraClaims)
@@ -47,18 +87,9 @@ public class JwtService {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, UserDetails userDetails) {
+    private boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
-    }
-
-    public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    public LocalDateTime extractExpiration(String token) {
-        Date expiration = extractClaim(token, Claims::getExpiration);
-        return LocalDateTime.ofInstant(expiration.toInstant(), ZoneId.systemDefault());
     }
 
     private boolean isTokenExpired(String token) {

@@ -27,7 +27,7 @@
 //     e.preventDefault();
 //     try {
 //       const { data } = await acceptInvite(token, { password });
-//       login(data.token, data.user);
+//       login(data.user);
 //       nav("/");
 //     } catch {
 //       setErr("Failed to accept invite");

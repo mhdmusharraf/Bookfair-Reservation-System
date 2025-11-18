@@ -1,6 +1,7 @@
 package com.bookfair.auth.service;
 
 import com.bookfair.auth.dto.AuthResponse;
+import com.bookfair.auth.dto.AuthSession;
 import com.bookfair.auth.dto.LoginRequest;
 import com.bookfair.auth.dto.RegisterRequest;
 import com.bookfair.auth.dto.UserProfileResponse;
@@ -20,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -35,7 +37,7 @@ public class UserService {
     private final VendorAccessService vendorAccessService;
 
     @Transactional
-    public AuthResponse registerVendor(RegisterRequest request) {
+    public AuthSession registerVendor(RegisterRequest request) {
         log.info("Registering new vendor with email {}", request.getEmail());
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email is already registered");
@@ -55,11 +57,11 @@ public class UserService {
 
         vendorAccessService.ensurePendingRequest(user, "system");
 
-        return buildAuthResponse(user);
+        return buildAuthSession(user);
     }
 
     @Transactional
-    public AuthResponse registerEmployee(RegisterRequest request) {
+    public AuthSession registerEmployee(RegisterRequest request) {
         log.info("Registering new employee with email {}", request.getEmail());
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email is already registered");
@@ -78,10 +80,10 @@ public class UserService {
 
         userRepository.save(user);
 
-        return buildAuthResponse(user);
+        return buildAuthSession(user);
     }
 
-    public AuthResponse authenticate(LoginRequest request) {
+    public AuthSession authenticate(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -89,7 +91,20 @@ public class UserService {
 
         User user = (User) authentication.getPrincipal();
         validatePortalAccess(user, request.getPortal());
-        return buildAuthResponse(user);
+        return buildAuthSession(user);
+    }
+
+    public AuthSession refreshSession(String refreshToken) {
+        if (!StringUtils.hasText(refreshToken)) {
+            throw new AccessDeniedException("Missing refresh token");
+        }
+        String email = jwtService.extractUsername(refreshToken);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AccessDeniedException("Unable to resolve refresh token subject"));
+        if (!jwtService.isRefreshTokenValid(refreshToken, user)) {
+            throw new AccessDeniedException("Refresh token is invalid or expired");
+        }
+        return buildAuthSession(user);
     }
 
     private void validatePortalAccess(User user, LoginPortal portal) {
@@ -131,11 +146,19 @@ public class UserService {
                 .build();
     }
 
-    private AuthResponse buildAuthResponse(User user) {
-        String token = jwtService.generateToken(user);
-        return AuthResponse.builder()
-                .token(token)
-                .expiresAt(jwtService.extractExpiration(token))
+    private AuthSession buildAuthSession(User user) {
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
+        AuthResponse response = AuthResponse.builder()
+                .user(buildProfile(user))
+                .expiresAt(jwtService.extractExpiration(accessToken))
+                .build();
+        return AuthSession.builder()
+                .response(response)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .accessTokenTtlSeconds(jwtService.getAccessTokenTtlSeconds())
+                .refreshTokenTtlSeconds(jwtService.getRefreshTokenTtlSeconds())
                 .build();
     }
 }

@@ -9,9 +9,8 @@ function buildWsUrl() {
 }
 
 export class SimpleStompClient {
-  constructor({ token } = {}) {
+  constructor() {
     this.url = buildWsUrl();
-    this.token = token;
     this.socket = null;
     this.connected = false;
     this.buffer = "";
@@ -29,7 +28,6 @@ export class SimpleStompClient {
     this.socket.onopen = () => {
       this.sendFrame("CONNECT", {
         "accept-version": "1.2",
-        Authorization: this.token ? `Bearer ${this.token}` : undefined,
         "heart-beat": "0,0",
       });
     };
@@ -144,6 +142,6 @@ export class SimpleStompClient {
   }
 }
 
-export function createStompClient(token) {
-  return new SimpleStompClient({ token });
+export function createStompClient() {
+  return new SimpleStompClient();
 }

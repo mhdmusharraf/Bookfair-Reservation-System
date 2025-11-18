@@ -1,32 +1,53 @@
 import React from 'react'
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { attachToken } from "../api/client";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { api } from "../api/client";
 
 const AuthCtx = createContext();
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(()=>localStorage.getItem("token"));
-  const [user, setUser] = useState(()=> {
-    try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; }
-  });
+  const [user, setUser] = useState(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
-  useEffect(()=> {
-    attachToken(token);
-  }, [token]);
+  const persistUser = useCallback((nextUser) => {
+    setUser(nextUser ?? null);
+  }, []);
 
-  const login = (token, user) => {
-    setToken(token); setUser(user);
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-  };
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await api.get("/auth/me");
+        if (!active) return;
+        persistUser(data);
+      } catch {
+        if (!active) return;
+        persistUser(null);
+      } finally {
+        if (active) setIsAuthenticating(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [persistUser]);
 
-  const logout = () => {
-    setToken(null); setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-  };
+  const login = useCallback((userData) => {
+    persistUser(userData);
+  }, [persistUser]);
 
-  const value = useMemo(()=>({ token, user, login, logout }), [token, user]);
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.warn("Failed to terminate session", error);
+    }
+    persistUser(null);
+  }, [persistUser]);
+
+  const value = useMemo(
+    () => ({ user, login, logout, isAuthenticating }),
+    [user, login, logout, isAuthenticating]
+  );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 

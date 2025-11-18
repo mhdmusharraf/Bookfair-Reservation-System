@@ -25,7 +25,7 @@ export default function Dashboard() {
   const [warn, setWarn] = useState("");
   const [info, setInfo] = useState("");
 
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   // cart: Map<stallId, { stall, label, genres[] }>
   const [selectedStalls, setSelectedStalls] = useState(new Map());
@@ -84,7 +84,7 @@ export default function Dashboard() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     return () => {
@@ -93,8 +93,8 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-    const client = createStompClient(token);
+    if (!user) return;
+    const client = createStompClient();
     client.connect();
     const subscriptionId = client.subscribe("/topic/stalls/status", (payload) => {
       if (!payload?.stallId) return;
@@ -126,7 +126,7 @@ export default function Dashboard() {
       client.unsubscribe(subscriptionId);
       client.disconnect();
     };
-  }, [token]);
+  }, [user]);
 
   const selectedStallIds = useMemo(
     () => new Set(selectedStalls.keys()),

@@ -21,7 +21,7 @@ const JoinRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { token } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     let active = true;
@@ -52,8 +52,8 @@ const JoinRequests = () => {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-    const client = createStompClient(token);
+    if (!user) return;
+    const client = createStompClient();
     client.connect();
     const subId = client.subscribe("/topic/vendor-access/requests", (payload) => {
       if (!payload?.requestId) return;
@@ -69,7 +69,7 @@ const JoinRequests = () => {
       client.unsubscribe(subId);
       client.disconnect();
     };
-  }, [token]);
+  }, [user?.id]);
 
   const handleApprove = async (requestId) => {
     try {
