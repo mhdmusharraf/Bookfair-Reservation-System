@@ -8,12 +8,48 @@ import Reserved from "./pages/Reserved";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Shell from "./components/Shell";
 
+const VENDOR_PORTAL_ROLES = ["VENDOR"];
+
+function hasRequiredRole(user, allowedRoles) {
+  if (!user?.roles || !Array.isArray(user.roles)) {
+    return false;
+  }
+  return user.roles.some((role) => allowedRoles.includes(role));
+}
+
+function UnauthorizedPortalNotice({ onLogout }) {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center px-4">
+      <div className="max-w-lg text-center space-y-4">
+        <h2 className="text-2xl font-semibold">Wrong portal</h2>
+        <p>
+          You are signed in with an account that does not have access to the
+          vendor portal. Please sign out and log in with your vendor account.
+        </p>
+        <button
+          type="button"
+          onClick={onLogout}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Protected({ children }) {
-  const { user, isAuthenticating } = useAuth();
+  const { user, isAuthenticating, logout } = useAuth();
   if (isAuthenticating) {
     return <div className="flex justify-center py-12">Checking session...</div>;
   }
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!hasRequiredRole(user, VENDOR_PORTAL_ROLES)) {
+    return <UnauthorizedPortalNotice onLogout={logout} />;
+  }
+  return children;
 }
 
 export default function App() {
