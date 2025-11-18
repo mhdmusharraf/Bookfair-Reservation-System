@@ -15,7 +15,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 import { fetchAllReservations } from "../api/reservations";
 
-const RegisteredBusinesses = () => {
+const PaymentHistory = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -137,4 +137,4 @@ const RegisteredBusinesses = () => {
   );
 };
 
-export default RegisteredBusinesses;
+export default PaymentHistory;
