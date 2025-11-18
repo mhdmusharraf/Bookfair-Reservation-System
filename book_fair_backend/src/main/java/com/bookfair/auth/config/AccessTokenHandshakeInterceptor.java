@@ -5,6 +5,7 @@ import com.bookfair.common.util.PortalRequestUtils;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -16,6 +17,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class AccessTokenHandshakeInterceptor implements HandshakeInterceptor {
@@ -38,17 +40,28 @@ public class AccessTokenHandshakeInterceptor implements HandshakeInterceptor {
             Cookie[] cookies = httpRequest.getCookies();
             if (cookies != null) {
                 LoginPortal portal = PortalRequestUtils.resolvePortal(httpRequest).orElse(null);
-                String cookieName = portal != null
-                        ? PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal)
-                        : null;
-                List<String> candidates = cookieName != null
-                        ? List.of(cookieName)
+                List<String> candidates = portal != null
+                        ? List.of(PortalRequestUtils.cookieName(ACCESS_TOKEN_COOKIE, portal))
                         : PortalRequestUtils.cookieNamesForAllPortals(ACCESS_TOKEN_COOKIE);
-                Arrays.stream(cookies)
+                List<Cookie> matchingCookies = Arrays.stream(cookies)
                         .filter(cookie -> candidates.contains(cookie.getName()))
-                        .map(Cookie::getValue)
-                        .filter(StringUtils::hasText)
+                        .filter(cookie -> StringUtils.hasText(cookie.getValue()))
+                        .collect(Collectors.toList());
+
+                if (portal == null) {
+                    long distinctNames = matchingCookies.stream()
+                            .map(Cookie::getName)
+                            .distinct()
+                            .count();
+                    if (distinctNames > 1) {
+                        response.setStatusCode(HttpStatus.FORBIDDEN);
+                        return false;
+                    }
+                }
+
+                matchingCookies.stream()
                         .findFirst()
+                        .map(Cookie::getValue)
                         .ifPresent(token -> attributes.put(ACCESS_TOKEN_ATTRIBUTE, token));
             }
         }

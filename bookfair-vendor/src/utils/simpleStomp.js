@@ -1,11 +1,19 @@
 const NULL_CHAR = "\u0000";
+const PORTAL = import.meta.env.VITE_LOGIN_PORTAL || "vendor";
+
+function withPortalQuery(url) {
+  if (!PORTAL) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}portal=${encodeURIComponent(PORTAL)}`;
+}
 
 function buildWsUrl() {
   const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
   const configured = import.meta.env.VITE_WS_BASE_URL;
-  if (configured) return configured;
+  if (configured) return withPortalQuery(configured);
   const normalized = apiBase.replace(/\/$/, "");
-  return normalized.replace(/\/api\/v1$/, "").replace(/^http/, "ws") + "/ws";
+  const base = normalized.replace(/\/api\/v1$/, "").replace(/^http/, "ws") + "/ws";
+  return withPortalQuery(base);
 }
 
 export class SimpleStompClient {
