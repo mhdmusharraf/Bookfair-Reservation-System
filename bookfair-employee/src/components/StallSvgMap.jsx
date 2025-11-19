@@ -259,7 +259,8 @@ export default function StallSvgMap({ stalls, onSelect }) {
     const codeMap = new Map();
     stalls.forEach((stall) => {
       if (!stall) return;
-      const code = typeof stall.code === "string" ? stall.code.toUpperCase() : null;
+      const code =
+        typeof stall.code === "string" ? stall.code.toUpperCase() : null;
       if (code) {
         codeMap.set(code, stall);
       }
@@ -290,7 +291,8 @@ export default function StallSvgMap({ stalls, onSelect }) {
         code: actual.code ?? fallback.code,
         size: actual.size ?? fallback.size,
         status: actual.status ?? fallback.status,
-        backendStatus: actual.backendStatus ?? actual.status ?? fallback.backendStatus,
+        backendStatus:
+          actual.backendStatus ?? actual.status ?? fallback.backendStatus,
         hall: fallback.hall,
         x: fallback.x,
         y: fallback.y,
@@ -311,6 +313,33 @@ export default function StallSvgMap({ stalls, onSelect }) {
     });
   }, [normalizedStalls]);
 
+  // === Ticket counters ===
+  // Entrance 1: above & left side of the entrance bar
+  const T1_W = 100,
+    T1_H = 44;
+  const TICKET1 = {
+    x: ENTRANCE.x + 12,
+    y: ENTRANCE.y - (T1_H + 12),
+    w: T1_W,
+    h: T1_H,
+    label: "Ticket Counter",
+  };
+
+  // Entrance 2: keep X near the entrance, set Y just ABOVE the pond
+  const cx2 = ENTRANCE_LEFT.x + ENTRANCE_LEFT.w / 2;
+  const cy2 = ENTRANCE_LEFT.y + ENTRANCE_LEFT.h / 2;
+  const T2_W = 92,
+    T2_H = 42;
+  const pondTop = POND.cy - POND.ry; // top edge of the pond
+  const GAP_ABOVE_POND = 10; // small gap
+  const TICKET2 = {
+    x: cx2 + 30, // (X unchanged)
+    y: pondTop - T2_H - GAP_ABOVE_POND, // <<< moved above the pond
+    w: T2_W,
+    h: T2_H,
+    label: "Ticket Counter",
+  };
+  
   return (
     <div className="w-full">
       <svg
@@ -394,7 +423,9 @@ export default function StallSvgMap({ stalls, onSelect }) {
               >
                 {codeTop}
               </text>
-              <title>{`${codeTop} — ${stall.size ?? "Unknown"} — ${stall.backendStatus ?? status}`}</title>
+              <title>{`${codeTop} — ${stall.size ?? "Unknown"} — ${
+                stall.backendStatus ?? status
+              }`}</title>
             </g>
           );
         })}
