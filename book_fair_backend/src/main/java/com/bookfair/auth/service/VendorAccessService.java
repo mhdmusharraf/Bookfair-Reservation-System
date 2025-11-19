@@ -7,6 +7,7 @@ import com.bookfair.auth.repository.VendorAccessRequestRepository;
 import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.VendorAccessRequestStatus;
 import com.bookfair.common.realtime.RealTimeGateway;
+import com.bookfair.notification.service.NotificationService;
 //import jakarta.transaction.Transactional;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class VendorAccessService {
     private final VendorAccessRequestRepository requestRepository;
     private final UserRepository userRepository;
     private final RealTimeGateway realTimeGateway;
+    private final NotificationService notificationService;
 
     @Transactional
     public VendorAccessRequest ensurePendingRequest(User vendor, String actor) {
@@ -43,6 +45,7 @@ public class VendorAccessService {
                 .build();
         VendorAccessRequest saved = requestRepository.save(request);
         realTimeGateway.publishVendorAccessRequest(saved);
+        notificationService.notifyEmployeesOfVendorRequest(vendor.getBusinessName());
         return saved;
     }
 
@@ -72,6 +75,7 @@ public class VendorAccessService {
         VendorAccessRequest saved = requestRepository.save(request);
         realTimeGateway.publishVendorAccessRequest(saved);
         realTimeGateway.publishVendorDecision(vendor, "APPROVED", employee.getEmail());
+        notificationService.notifyVendorAccessApproved(vendor, employee);
         return saved;
     }
 }
