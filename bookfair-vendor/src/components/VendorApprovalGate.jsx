@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, Typography, CircularProgress, Stack } from "@mui/material";
+import { Dialog, DialogContent, Typography, CircularProgress, Stack, Button, Box, IconButton } from "@mui/material";
+import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from "../context/AuthContext";
 import { createStompClient } from "../utils/simpleStomp";
+import { useNavigate } from "react-router-dom";
 
 export default function VendorApprovalGate({ children }) {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const [open, setOpen] = useState(() => user?.status && user.status !== "ACTIVE");
   const [lastDecision, setLastDecision] = useState(null);
+  const nav = useNavigate();
 
   const shouldBlock = useMemo(() => user?.status && user.status !== "ACTIVE", [user]);
 
@@ -32,23 +35,71 @@ export default function VendorApprovalGate({ children }) {
     };
   }, [user?.id, shouldBlock, updateUser]);
 
+  // New function to handle redirection
+  const handleExit = () => {
+    if (logout) logout(); 
+    nav("/login");
+  };
+
   return (
     <>
       {children}
-      <Dialog open={open} fullWidth maxWidth="sm">
-        <DialogTitle className="font-bold">Awaiting employee approval</DialogTitle>
+      <Dialog 
+        open={open} 
+        fullWidth 
+        maxWidth="xs" 
+        PaperProps={{ sx: { borderRadius: 4, padding: 2 } }}
+      >
+        <IconButton 
+          onClick={handleExit}
+          sx={{ position: 'absolute', right: 12, top: 12, color: 'text.secondary' }}
+        >
+          <CloseIcon />
+        </IconButton>
+
         <DialogContent>
-          <Stack spacing={2} alignItems="center">
-            <CircularProgress />
-            <Typography align="center">
-              We notified the employee team that <strong>{user?.businessName}</strong> is ready to access the
-              dashboard. The page will unlock automatically once they approve the request.
-            </Typography>
+          <Stack spacing={3} alignItems="center" textAlign="center" mt={1}>
+            <Box position="relative" display="inline-flex">
+              <CircularProgress size={60} thickness={4} />
+            </Box>
+
+            <Box>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                Awaiting Employee Approval
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                We notified the employee team that <strong>{user?.businessName}</strong> is ready to access the
+                dashboard.
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                The page will unlock automatically once they approve the request.
+              </Typography>
+            </Box>
+
             {lastDecision && lastDecision.decision !== "APPROVED" && (
-              <Typography color="error" variant="body2">
-                {lastDecision.decision}
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'error.main', 
+                  bgcolor: 'error.lighter', 
+                  px: 2, 
+                  py: 0.5, 
+                  borderRadius: 1,
+                  fontWeight: 'medium'
+                }}
+              >
+                Status: {lastDecision.decision}
               </Typography>
             )}
+
+            <Button 
+              variant="outlined" 
+              color="inherit" 
+              onClick={handleExit}
+              sx={{ borderRadius: 50, px: 4, textTransform: 'none' }}
+            >
+              Back to Login
+            </Button>
           </Stack>
         </DialogContent>
       </Dialog>
