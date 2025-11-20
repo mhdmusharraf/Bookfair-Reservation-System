@@ -23,7 +23,6 @@ import CancelIcon from "@mui/icons-material/Cancel";
 
 import StallLegend from "../components/StallLegend";
 import StallSvgMap from "../components/StallSvgMap";
-import StallMapNew from "../components/StallMapNew";
 import { fetchStalls } from "../api/stalls";
 import { fetchAllReservations } from "../api/reservations";
 import { fetchDashboard } from "../api/dashboard";
@@ -178,17 +177,9 @@ export default function Dashboard() {
               </div>
             </div>
             <Divider className="my-3" />
-            {/* <div className="grid md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <StallSvgMap
-                  stalls={stalls}
-                  onSelect={(stall) => setSelectedStall(stall)}
-                />
-              </div>
-            </div> */}
             <div className="grid md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <StallMapNew
+                <StallSvgMap
                   stalls={stalls}
                   onSelect={(stall) => setSelectedStall(stall)}
                 />
@@ -233,11 +224,7 @@ export default function Dashboard() {
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <List
                 dense
-                sx={{
-                  width: "100%",
-                  maxWidth: 520,
-                  bgcolor: "background.paper",
-                }}
+                sx={{ width: "100%", maxWidth: 520, bgcolor: "background.paper" }}
               >
                 {latestReservations.length === 0 ? (
                   <ListItem>
@@ -320,8 +307,7 @@ export default function Dashboard() {
                     Confirmation: {selectedRequest.confirmationCode}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 1 }}>
-                    Reserved on:{" "}
-                    {new Date(selectedRequest.reservedAt).toLocaleString()}
+                    Reserved on: {new Date(selectedRequest.reservedAt).toLocaleString()}
                   </Typography>
                 </Box>
                 <Tooltip title="View receipt">
