@@ -217,9 +217,9 @@ export default function Dashboard() {
               <Typography variant="subtitle1" className="font-semibold mb-2">
                 Recent reservations
               </Typography>
-              <Button size="small" onClick={() => window.location.reload()}>
+              {/* <Button size="small" onClick={() => window.location.reload()}>
                 Refresh
-              </Button>
+              </Button> */}
             </div>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <List
@@ -245,7 +245,7 @@ export default function Dashboard() {
                                 <ReceiptIcon sx={{ color: "blue" }} />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Mark as reviewed">
+                            {/* <Tooltip title="Mark as reviewed">
                               <IconButton>
                                 <CheckIcon sx={{ color: "green" }} />
                               </IconButton>
@@ -254,7 +254,7 @@ export default function Dashboard() {
                               <IconButton>
                                 <CancelIcon sx={{ color: "red" }} />
                               </IconButton>
-                            </Tooltip>
+                            </Tooltip> */}
                           </Box>
                         }
                         disablePadding
@@ -336,9 +336,9 @@ export default function Dashboard() {
                 >
                   Close
                 </Button>
-                <Button variant="contained" color="primary">
+                {/* <Button variant="contained" color="primary">
                   Mark as reviewed
-                </Button>
+                </Button> */}
               </Box>
             </>
           )}
