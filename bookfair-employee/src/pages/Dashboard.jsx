@@ -241,14 +241,14 @@ export default function Dashboard() {
           <CircularProgress />
         </div>
       ) : (
-        <div className="flex flex-col xl:flex-row w-full gap-4">
+        <div className="flex flex-col xl:flex-row w-100% gap-4 ">
           {/* Stall Map Section */}
           <Paper className="p-4 xl:w-3/5">
-            <div className="flex items-center justify-between">
+            <div className="flex md:flex-row flex-col mb-2 md:items-center justify-between">
               <Typography variant="h6" className="font-bold">
                 Stall Map
               </Typography>
-              <div className="flex items-center gap-2">
+              <div className="flex md:items-center md:gap-10 gap-2 flex-col md:flex-row">
                 <Typography variant="body2" color="text.secondary">
                   {availableCount} available / {reservedCount} reserved
                 </Typography>
@@ -311,7 +311,11 @@ export default function Dashboard() {
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <List
                 dense
-                sx={{ width: "100%", maxWidth: 520, bgcolor: "background.paper" }}
+                sx={{
+                  width: "100%",
+                  maxWidth: 520,
+                  bgcolor: "background.paper",
+                }}
               >
                 {latestReservations.length === 0 ? (
                   <ListItem>
@@ -394,7 +398,8 @@ export default function Dashboard() {
                     Confirmation: {selectedRequest.confirmationCode}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 1 }}>
-                    Reserved on: {new Date(selectedRequest.reservedAt).toLocaleString()}
+                    Reserved on:{" "}
+                    {new Date(selectedRequest.reservedAt).toLocaleString()}
                   </Typography>
                 </Box>
                 <Tooltip title="View receipt">

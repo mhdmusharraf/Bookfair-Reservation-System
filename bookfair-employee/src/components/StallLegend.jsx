@@ -1,7 +1,7 @@
 import React from "react";
 export default function StallLegend() {
   return (
-    <div className="flex items-center gap-4 text-sm">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4 sm:text-sm text-xs gap-1">
       <div className="flex items-center gap-2">
         <span className="w-4 h-4 rounded bg-green-500 inline-block" /> Available
       </div>
