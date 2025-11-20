@@ -36,9 +36,8 @@ export default function Dashboard() {
   const [currentLabel, setCurrentLabel] = useState(""); // S-## / M-## / L-##
   const [tempGenres, setTempGenres] = useState([]);
 
-  // confirm & payment
+  // confirm
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
@@ -195,11 +194,6 @@ export default function Dashboard() {
     setConfirmModalOpen(true);
   };
 
-  const handleProceedToPayment = () => {
-    setConfirmModalOpen(false);
-    setIsPaymentModalOpen(true);
-  };
-
   const handleFinalConfirm = async () => {
     setIsReserving(true);
 
@@ -220,6 +214,7 @@ export default function Dashboard() {
       const { data: codes } = await fetchMyReservedStallCodes(user.email, fresh);
       setMyReservedCodes(new Set(codes));
       setSelectedStalls(new Map());
+      setConfirmModalOpen(false);
       // TODO: Show QR using data.qrUrl if needed
     } catch (error) {
       const message =
@@ -228,11 +223,6 @@ export default function Dashboard() {
     } finally {
       setIsReserving(false);
     }
-  };
-
-  const handleMockPaymentAndReserve = async () => {
-    setIsPaymentModalOpen(false);
-    await handleFinalConfirm();
   };
 
   const removeFromCart = useCallback(async (stallId) => {
@@ -482,7 +472,12 @@ export default function Dashboard() {
       </Dialog>
 
       {/* Confirm modal */}
-      <Dialog open={isConfirmModalOpen} onClose={() => setConfirmModalOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={isConfirmModalOpen}
+        onClose={() => { if (!isReserving) setConfirmModalOpen(false); }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Review & Confirm Reservation</DialogTitle>
 
         <DialogContent dividers>
@@ -583,34 +578,17 @@ export default function Dashboard() {
           </Stack>
 
           <Alert severity="warning" variant="outlined" sx={{ mt: 2 }}>
-            This action is final and cannot be undone after payment.
+            This action will confirm your reservation immediately. Please double-check your
+            stall details before proceeding.
           </Alert>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setConfirmModalOpen(false)} color="inherit">Back</Button>
-          <Button onClick={handleProceedToPayment} variant="contained" autoFocus>
-            Proceed to Payment
+          <Button onClick={() => setConfirmModalOpen(false)} color="inherit" disabled={isReserving}>
+            Back
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Payment mock (keep for now, or swap to Stripe dialog per earlier step) */}
-      <Dialog open={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)}>
-        <DialogTitle>Payment</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            This is where the payment gateway integration will go.
-            <br /><br />
-            Total Amount: <b>{currency.format(estimatedTotal)}</b>
-            <br /><br />
-            Clicking "Pay Now" will complete the reservation.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsPaymentModalOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleMockPaymentAndReserve} variant="contained" disabled={isReserving}>
-            {isReserving ? <CircularProgress size={24} /> : "Pay Now (Mock)"}
+          <Button onClick={handleFinalConfirm} variant="contained" autoFocus disabled={isReserving}>
+            {isReserving ? <CircularProgress size={24} /> : "Confirm Reservation"}
           </Button>
         </DialogActions>
       </Dialog>
