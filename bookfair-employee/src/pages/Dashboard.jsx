@@ -23,6 +23,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 
 import StallLegend from "../components/StallLegend";
 import StallSvgMap from "../components/StallSvgMap";
+import NewStallMap from "../components/NewStallMap";
 import { fetchStalls } from "../api/stalls";
 import { fetchAllReservations } from "../api/reservations";
 import { fetchDashboard } from "../api/dashboard";
@@ -255,9 +256,17 @@ export default function Dashboard() {
               </div>
             </div>
             <Divider className="my-3" />
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* <div className="grid md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <StallSvgMap
+                  stalls={stalls}
+                  onSelect={(stall) => setSelectedStall(stall)}
+                />
+              </div>
+            </div> */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <NewStallMap
                   stalls={stalls}
                   onSelect={(stall) => setSelectedStall(stall)}
                 />
