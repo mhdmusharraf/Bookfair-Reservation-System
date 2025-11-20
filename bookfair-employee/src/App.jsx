@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import JoinRequests from "./pages/JoinRequests";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import Header from "./components/Header";
 import RegisteredBusinesses from "./pages/RegisteredBusinesses";
 import PaymentHistory from "./pages/PaymentHistory";
@@ -56,9 +57,10 @@ function Protected({ children }) {
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route element={<Header />}>
+      <NotificationProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<Header />}>
           <Route
             path="/"
             element={
@@ -93,7 +95,8 @@ export default function App() {
           />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

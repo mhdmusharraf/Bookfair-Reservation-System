@@ -4,6 +4,7 @@ import com.bookfair.auth.entity.User;
 import com.bookfair.auth.repository.UserRepository;
 import com.bookfair.common.constants.AccountStatus;
 import com.bookfair.common.constants.Role;
+import com.bookfair.common.realtime.RealTimeGateway;
 import com.bookfair.common.service.EmailService;
 import com.bookfair.common.service.QrCodeService;
 import com.bookfair.reservation.dto.ReservationRequest;
@@ -37,6 +38,7 @@ public class ReservationService {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final StallHoldService stallHoldService;
+    private final RealTimeGateway realTimeGateway;
 
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
@@ -86,14 +88,16 @@ public class ReservationService {
         reservation.setQrCode(qrCodeBytes);
 
         Reservation savedReservation = reservationRepository.save(reservation);
+        ReservationResponse response = toResponse(savedReservation);
 
         emailService.sendReservationConfirmation(user, savedReservation, qrCodeBytes);
 
         List<User> employees = userRepository.findAllByRole(Role.EMPLOYEE);
         emailService.sendReservationNotificationToEmployees(savedReservation, employees, qrCodeBytes);
+        realTimeGateway.publishReservation(response);
 
         log.info("Reservation {} created for user {}", savedReservation.getId(), user.getEmail());
-        return toResponse(savedReservation);
+        return response;
     }
 
     @Transactional(readOnly = true)

@@ -71,3 +71,4 @@ Employee self-signup has been disabled. Four operational accounts are provisione
 2. Restart the backend. Any account whose email is not already present in the `users` table will be created automatically with the EMPLOYEE role.
 3. Rotate credentials by updating the password in the YAML file and deleting the matching user row from the database (or adjust it manually) before restarting the service.
 
+git logs

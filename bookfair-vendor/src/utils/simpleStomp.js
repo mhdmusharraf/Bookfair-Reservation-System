@@ -8,7 +8,7 @@ function withPortalQuery(url) {
 }
 
 function buildWsUrl() {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8088/api/v1";
+  const apiBase = import.meta.env.VITE_API_BASE_URL;
   const configured = import.meta.env.VITE_WS_BASE_URL;
   if (configured) return withPortalQuery(configured);
   const normalized = apiBase.replace(/\/$/, "");

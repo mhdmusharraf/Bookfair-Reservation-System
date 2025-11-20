@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Paper,
   Typography,
@@ -23,9 +23,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 
 import StallLegend from "../components/StallLegend";
 import StallSvgMap from "../components/StallSvgMap";
+import NewStallMap from "../components/NewStallMap";
 import { fetchStalls } from "../api/stalls";
 import { fetchAllReservations } from "../api/reservations";
 import { fetchDashboard } from "../api/dashboard";
+import { createStompClient } from "../utils/simpleStomp";
 
 function initials(label = "") {
   return label
@@ -45,6 +47,31 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const mapStallStatus = useCallback((stall, backendStatus) => {
+    const normalized = backendStatus || stall.backendStatus || "AVAILABLE";
+    const status =
+      normalized === "BOOKED"
+        ? "ACCEPTED"
+        : normalized === "IN_PROGRESS"
+        ? "REQUESTED"
+        : "AVAILABLE";
+    return {
+      ...stall,
+      backendStatus: normalized,
+      reserved: normalized === "BOOKED",
+      status,
+    };
+  }, []);
+
+  const syncStatsWithStalls = useCallback((nextStalls) => {
+    setStats((prev) => {
+      if (!prev) return prev;
+      const reservedTotal = nextStalls.filter((stall) => stall.reserved).length;
+      const availableTotal = nextStalls.length - reservedTotal;
+      return { ...prev, reservedStalls: reservedTotal, availableStalls: availableTotal };
+    });
+  }, []);
 
   const requestModalStyle = {
     position: "absolute",
@@ -75,8 +102,16 @@ export default function Dashboard() {
           return;
         }
 
-        setStalls(stallRes.data ?? []);
-        setReservations(reservationRes.data ?? []);
+        const stallData = (stallRes.data ?? []).map((stall) =>
+          mapStallStatus(stall, stall.backendStatus)
+        );
+        const reservationData = (reservationRes.data ?? []).slice().sort((a, b) =>
+          new Date(b.reservedAt) - new Date(a.reservedAt)
+        );
+
+        setStalls(stallData);
+        syncStatsWithStalls(stallData);
+        setReservations(reservationData);
         setStats(dashboardRes.data ?? null);
       } catch (err) {
         if (!active) return;
@@ -94,6 +129,50 @@ export default function Dashboard() {
 
     return () => {
       active = false;
+    };
+  }, [mapStallStatus, syncStatsWithStalls]);
+
+  useEffect(() => {
+    const client = createStompClient();
+    client.connect();
+    const subscriptionId = client.subscribe("/topic/stalls/status", (payload) => {
+      if (!payload?.stallId) return;
+      setStalls((prev) => {
+        let changed = false;
+        const updated = prev.map((stall) => {
+          if (stall.id === payload.stallId) {
+            changed = true;
+            return mapStallStatus(stall, payload.status);
+          }
+          return stall;
+        });
+        if (!changed) return prev;
+        syncStatsWithStalls(updated);
+        return updated;
+      });
+    });
+    return () => {
+      client.unsubscribe(subscriptionId);
+      client.disconnect();
+    };
+  }, [mapStallStatus, syncStatsWithStalls]);
+
+  useEffect(() => {
+    const client = createStompClient();
+    client.connect();
+    const subscriptionId = client.subscribe("/topic/reservations/recent", (payload) => {
+      if (!payload?.id) return;
+      setReservations((prev) => {
+        const others = prev.filter((item) => item.id !== payload.id);
+        const sorted = [payload, ...others].sort(
+          (a, b) => new Date(b.reservedAt) - new Date(a.reservedAt)
+        );
+        return sorted.slice(0, 20);
+      });
+    });
+    return () => {
+      client.unsubscribe(subscriptionId);
+      client.disconnect();
     };
   }, []);
 
@@ -118,7 +197,7 @@ export default function Dashboard() {
   };
 
   const latestReservations = useMemo(
-    () => reservations.slice(0, 10),
+    () => reservations.slice(0, 5),
     [reservations]
   );
 
@@ -177,9 +256,17 @@ export default function Dashboard() {
               </div>
             </div>
             <Divider className="my-3" />
-            <div className="grid md:grid-cols-2 gap-6">
+            {/* <div className="grid md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <StallSvgMap
+                  stalls={stalls}
+                  onSelect={(stall) => setSelectedStall(stall)}
+                />
+              </div>
+            </div> */}
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <NewStallMap
                   stalls={stalls}
                   onSelect={(stall) => setSelectedStall(stall)}
                 />
@@ -217,9 +304,9 @@ export default function Dashboard() {
               <Typography variant="subtitle1" className="font-semibold mb-2">
                 Recent reservations
               </Typography>
-              <Button size="small" onClick={() => window.location.reload()}>
+              {/* <Button size="small" onClick={() => window.location.reload()}>
                 Refresh
-              </Button>
+              </Button> */}
             </div>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <List
@@ -245,7 +332,7 @@ export default function Dashboard() {
                                 <ReceiptIcon sx={{ color: "blue" }} />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Mark as reviewed">
+                            {/* <Tooltip title="Mark as reviewed">
                               <IconButton>
                                 <CheckIcon sx={{ color: "green" }} />
                               </IconButton>
@@ -254,7 +341,7 @@ export default function Dashboard() {
                               <IconButton>
                                 <CancelIcon sx={{ color: "red" }} />
                               </IconButton>
-                            </Tooltip>
+                            </Tooltip> */}
                           </Box>
                         }
                         disablePadding
@@ -336,9 +423,9 @@ export default function Dashboard() {
                 >
                   Close
                 </Button>
-                <Button variant="contained" color="primary">
+                {/* <Button variant="contained" color="primary">
                   Mark as reviewed
-                </Button>
+                </Button> */}
               </Box>
             </>
           )}
