@@ -7,6 +7,7 @@ import com.bookfair.common.realtime.dto.StallStatusMessage;
 import com.bookfair.common.realtime.dto.VendorAccessDecisionMessage;
 import com.bookfair.common.realtime.dto.VendorAccessRequestMessage;
 import com.bookfair.notification.entity.Notification;
+import com.bookfair.reservation.dto.ReservationResponse;
 import com.bookfair.stall.entity.Stall;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -23,6 +24,7 @@ public class RealTimeGateway {
     private static final String VENDOR_DECISION_QUEUE = "/queue/vendor-access";
     private static final String STALL_STATUS_TOPIC = "/topic/stalls/status";
     private static final String USER_NOTIFICATION_QUEUE = "/queue/notifications";
+    private static final String RECENT_RESERVATIONS_TOPIC = "/topic/reservations/recent";
 
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -73,5 +75,9 @@ public class RealTimeGateway {
                 .createdAt(notification.getCreatedAt())
                 .build();
         messagingTemplate.convertAndSendToUser(notification.getRecipient().getEmail(), USER_NOTIFICATION_QUEUE, payload);
+    }
+
+    public void publishReservation(ReservationResponse reservation) {
+        messagingTemplate.convertAndSend(RECENT_RESERVATIONS_TOPIC, reservation);
     }
 }

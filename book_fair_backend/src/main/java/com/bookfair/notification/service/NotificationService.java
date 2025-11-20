@@ -8,7 +8,6 @@ import com.bookfair.notification.dto.NotificationResponse;
 import com.bookfair.notification.entity.Notification;
 import com.bookfair.notification.entity.NotificationType;
 import com.bookfair.notification.repository.NotificationRepository;
-import com.bookfair.reservation.entity.Reservation;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -39,13 +38,6 @@ public class NotificationService {
         String title = "Access request approved";
         String message = String.format("%s approved your vendor portal access request.", employee.getBusinessName());
         createNotification(vendor, NotificationType.VENDOR_ACCESS_APPROVED, title, message, "/");
-    }
-
-    @Transactional
-    public void notifyEmployeesOfReservation(Reservation reservation) {
-        String title = "New reservation confirmed";
-        String message = reservation.getUser().getBusinessName() + " booked " + reservation.getStalls().size() + " stall(s).";
-        notifyRole(Role.EMPLOYEE, NotificationType.RESERVATION_CREATED, title, message, "/");
     }
 
     @Transactional
