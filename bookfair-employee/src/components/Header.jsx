@@ -1,6 +1,19 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Button, Badge } from "@mui/material";
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  Button,
+  Badge,
+  useMediaQuery,
+  useTheme,
+  IconButton,
+  Menu,
+  MenuItem,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationsMenu from "./NotificationsMenu";
@@ -9,6 +22,66 @@ export default function Header() {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
   const nav = useNavigate();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
+  const [anchorEl, setAnchorEl] = React.useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const navItems = [
+    { to: "/", label: "Dashboard" },
+    { to: "/join-requests", label: "Join Requests", badge: unreadCount },
+    { to: "/registered-businesses", label: "Registered Businesses" },
+    { to: "/payment-history", label: "Payment History" },
+  ];
+
+  const NavButton = ({ to, label, badge }) => (
+    <NavLink
+      to={to}
+      end={to === "/"}
+      style={({ isActive }) => ({
+        textDecoration: "none",
+        color: isActive
+          ? theme.palette.primary.main
+          : theme.palette.text.primary,
+        fontWeight: isActive ? "bold" : "normal",
+      })}
+    >
+      <Button
+        component="div" 
+        color="inherit"
+        sx={{
+          textTransform: "none",
+          bgcolor: ({ isActive }) =>
+            isActive ? theme.palette.action.selected : "transparent",
+          "&:hover": {
+            bgcolor: ({ isActive }) =>
+              isActive
+                ? theme.palette.action.selected
+                : theme.palette.action.hover,
+          },
+        }}
+      >
+        {badge > 0 ? (
+          <Badge color="error" badgeContent={badge} invisible={badge === 0}>
+            <Box component="span" sx={{ display: "inline-flex", minWidth: 90 }}>
+              {label}
+            </Box>
+          </Badge>
+        ) : (
+          label
+        )}
+      </Button>
+    </NavLink>
+  );
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
@@ -17,42 +90,15 @@ export default function Header() {
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
             CIBF Employee Portal
           </Typography>
-          <Button
-            component={Link}
-            to="/"
-            color="inherit"
-            sx={{ textTransform: "none" }}
-          >
-            Dashboard
-          </Button>
-          <Button
-            component={Link}
-            to="/join-requests"
-            color="inherit"
-            sx={{ textTransform: "none" }}
-          >
-            <Badge color="error" badgeContent={unreadCount} invisible={unreadCount === 0}>
-              <Box component="span" sx={{ display: "inline-flex", minWidth: 90 }}>
-                Join Requests
-              </Box>
-            </Badge>
-          </Button>
-          <Button
-            component={Link}
-            to="/registered-businesses"
-            color="inherit"
-            sx={{ textTransform: "none" }}
-          >
-            Registered Businesses
-          </Button>
-          <Button
-            component={Link}
-            to="/payment-history"
-            color="inherit"
-            sx={{ textTransform: "none" }}
-          >
-            Payment History
-          </Button>
+
+          {isDesktop && (
+            <Box className="flex gap-2">
+              {navItems.map((item) => (
+                <NavButton key={item.to} {...item} />
+              ))}
+            </Box>
+          )}
+
           <Box className="ml-auto flex items-center gap-4">
             <NotificationsMenu />
             {user && (
@@ -77,10 +123,69 @@ export default function Header() {
                 </Button>
               </>
             )}
+
+            {!isDesktop && (
+              <>
+                <IconButton
+                  edge="start"
+                  color="inherit"
+                  aria-label="menu"
+                  onClick={handleMenu}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Menu
+                  anchorEl={anchorEl}
+                  anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "right",
+                  }}
+                  keepMounted
+                  transformOrigin={{
+                    vertical: "top",
+                    horizontal: "right",
+                  }}
+                  open={open}
+                  onClose={handleClose}
+                >
+                  {navItems.map((item) => (
+                    <MenuItem
+                      key={item.to}
+                      component={NavLink}
+                      to={item.to}
+                      end={item.to === "/"} 
+                      onClick={handleClose}
+                      sx={{
+                        bgcolor: ({ isActive }) =>
+                          isActive
+                            ? theme.palette.action.selected
+                            : "transparent",
+                        color: ({ isActive }) =>
+                          isActive ? theme.palette.primary.main : "inherit",
+                        fontWeight: ({ isActive }) =>
+                          isActive ? "bold" : "normal",
+                      }}
+                    >
+                      {item.badge > 0 ? (
+                        <Badge
+                          color="error"
+                          badgeContent={item.badge}
+                          invisible={item.badge === 0}
+                        >
+                          {item.label}
+                        </Badge>
+                      ) : (
+                        item.label
+                      )}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
-      <Box className="p-4 mx-auto w-full">
+      <Box className="p-2 md:p-4 mx-auto w-100%">
         <Outlet />
       </Box>
     </Box>
