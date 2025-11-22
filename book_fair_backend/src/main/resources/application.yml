@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/book_fair
-    username: bookuser
-    password: bookpass
+    username: postgres
+    password: sulaiman123
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -45,8 +45,15 @@ security:
     cookie-secure: false
     cookie-same-site: Lax
 
+stripe:
+  api-key: pk_test_51R0kS6BCn3FapvWYEcKLA9e7i6Ch77Q3qcouxNTgEbLTRAjZs2kfqlyblMvaQNAGoPFfe6QJHSg8T01huzqztnqo00TxPwEqOW         # secret key (keep in env/CI)
+  webhook-secret: whsec_ebb464efffaf26571ae94654f60fa5bbfefd92aa82dcffbe57d44d8c904680c4  # webhook signing secret
+  success-url: "https://your-frontend.com/payment-success?session_id={CHECKOUT_SESSION_ID}"
+  cancel-url: "https://your-frontend.com/payment-cancel"
+
+
 server:
-  port: 8088
+  port: 8081
 
 logging:
   level:
