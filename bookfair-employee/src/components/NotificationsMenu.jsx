@@ -97,14 +97,17 @@ export default function NotificationsMenu() {
                 primary={notification.title}
                 primaryTypographyProps={{ fontWeight: notification.read ? 500 : 700 }}
                 secondary={
-                  <>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box
+                    component="span"
+                    sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}
+                  >
+                    <Typography component="span" variant="body2" color="text.secondary">
                       {notification.message}
                     </Typography>
-                    <Typography variant="caption" color="text.disabled">
+                    <Typography component="span" variant="caption" color="text.disabled">
                       {formatTimestamp(notification.createdAt)}
                     </Typography>
-                  </>
+                  </Box>
                 }
               />
             </ListItemButton>
@@ -120,4 +123,3 @@ export default function NotificationsMenu() {
     </>
   );
 }
-
