@@ -49,10 +49,10 @@ public class AuthController {
     @Value("${security.jwt.cookie-domain:}")
     private String cookieDomain;
 
-    @Value("${security.jwt.cookie-secure:false}")
+    @Value("${security.jwt.cookie-secure:true}")
     private boolean cookieSecure;
 
-    @Value("${security.jwt.cookie-same-site:Lax}")
+    @Value("${security.jwt.cookie-same-site:Strict}")
     private String cookieSameSite;
 
     @PostMapping("/register")

@@ -42,8 +42,8 @@ security:
     access-expiration-minutes: 30
     refresh-expiration-days: 14
     cookie-domain: ""
-    cookie-secure: false
-    cookie-same-site: Lax
+    cookie-secure: true
+    cookie-same-site: Strict
 stripe:
   webhook-secret: whsec_ebb464efffaf26571ae94654f60fa5bbfefd92aa82dcffbe57d44d8c904680c4  # webhook signing secret
   success-url: "https://your-frontend.com/payment-success?session_id={CHECKOUT_SESSION_ID}"
