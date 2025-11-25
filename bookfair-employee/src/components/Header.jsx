@@ -41,7 +41,8 @@ export default function Header() {
     {
       to: "/join-requests",
       label: "Join Requests",
-      badge: unreadByType?.VENDOR_ACCESS_REQUEST ?? unreadCount,
+      // badge: unreadByType?.VENDOR_ACCESS_REQUEST ?? unreadCount,
+      badge: unreadByType?.VENDOR_ACCESS_REQUEST || 0,
     },
     { to: "/registered-businesses", label: "Registered Businesses" },
     {
