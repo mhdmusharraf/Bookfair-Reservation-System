@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/book_fair
-    username: bookuser
-    password: bookpass
+    username: postgres
+    password: sulaiman123
     driver-class-name: org.postgresql.Driver
 
   jpa:
