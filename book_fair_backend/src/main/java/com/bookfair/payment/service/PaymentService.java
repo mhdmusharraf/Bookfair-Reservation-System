@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import com.bookfair.stall.entity.StallSize;
 
 @Slf4j
 @Service
@@ -129,10 +130,10 @@ public class PaymentService {
         if (stallIds == null || stallIds.isEmpty()) {
             throw new IllegalArgumentException("No stalls provided for payment");
         }
-        Map<String, Integer> sizePricing = Map.of(
-                "SMALL", 40000,
-                "MEDIUM", 70000,
-                "LARGE", 100000
+        Map<StallSize, Integer> sizePricing = Map.of(
+                StallSize.SMALL, 40000,
+                StallSize.MEDIUM, 70000,
+                StallSize.LARGE, 100000
         );
         List<Stall> stalls = stallRepository.findAllById(stallIds);
         if (stalls.size() != stallIds.size()) {
