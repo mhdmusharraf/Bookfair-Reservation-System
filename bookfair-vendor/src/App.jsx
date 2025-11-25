@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AcceptInvite from "./pages/AcceptInvite";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Dashboard from "./pages/Dashboard";
 import Reserved from "./pages/Reserved";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -62,6 +63,7 @@ export default function App() {
         <Route element={<Shell/>}>
           <Route path="/" element={<Protected><Dashboard/></Protected>} />
           <Route path="/reserved" element={<Protected><Reserved/></Protected>} />
+          <Route path="/payment-success" element={<Protected><PaymentSuccess/></Protected>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>
