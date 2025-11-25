@@ -11,8 +11,8 @@ import com.bookfair.payment.entity.PaymentStatus;
 import com.bookfair.payment.repository.PaymentRepository;
 import com.bookfair.notification.service.NotificationService;
 import com.bookfair.reservation.entity.Reservation;
-import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.reservation.service.ReservationService;
+import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.stall.entity.Stall;
 import com.bookfair.stall.repository.StallRepository;
 import com.stripe.Stripe;
@@ -35,8 +35,8 @@ import com.bookfair.stall.entity.StallSize;
 public class PaymentService {
 
     private final ReservationService reservationService;
-    private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
+    private final ReservationRepository reservationRepository;
     private final UserService userService; // to get current user when needed
     private final UserRepository userRepository;
     private final NotificationService notificationService;
@@ -61,17 +61,17 @@ public class PaymentService {
      * Create a Checkout session for the reservation flow.
      * Steps:
      *  - validate input
-     *  - create pending reservation (holds stalls)
+     *  - refresh stall holds
      *  - create Stripe session (line items = total amount)
-     *  - save Payment entity (status=PENDING)
+     *  - save Payment entity (status=PENDING, reservation created after webhook success)
      *  - return session url + id
      */
     public CheckoutSessionResponse createCheckoutSession(List<Long> stallIds, User user, String currency) throws Exception {
         // compute total amount in cents -- implement price logic (per stall price etc). Example: fixed price per stall.
         long totalAmountCents = calculateTotal(stallIds);
 
-        // create pending reservation
-        Reservation reservation = reservationService.createPendingReservationForPayment(stallIds, user, totalAmountCents, currency);
+        // validate stalls and refresh holds before sending the user to payment
+        reservationService.ensureStallsReadyForPayment(stallIds, user);
 
         // build Stripe session
         SessionCreateParams.LineItem.PriceData.ProductData productData =
@@ -97,8 +97,7 @@ public class PaymentService {
                 .setSuccessUrl(successUrl.replace("{CHECKOUT_SESSION_ID}", "{CHECKOUT_SESSION_ID}"))
                 .setCancelUrl(cancelUrl)
                 .addAllLineItem(Arrays.asList(lineItem))
-                // include metadata for webhook: reservationId
-                .putMetadata("reservationId", String.valueOf(reservation.getId()))
+                // include metadata for webhook
                 .putMetadata("userId", String.valueOf(user.getId()))
                 .putMetadata("stallIds", stallIds.stream()
                         .map(String::valueOf)
@@ -110,7 +109,6 @@ public class PaymentService {
 
         // save payment record
         Payment payment = Payment.builder()
-                .reservationId(reservation.getId())
                 .userId(user.getId())
                 .stripeSessionId(session.getId())
                 .amount(totalAmountCents)
@@ -119,10 +117,6 @@ public class PaymentService {
                 .createdAt(LocalDateTime.now())
                 .build();
         paymentRepository.save(payment);
-
-        // link session id to reservation for lookup
-        reservation.setStripeSessionId(session.getId());
-        reservationRepository.save(reservation);
 
         return CheckoutSessionResponse.builder()
                 .checkoutUrl(session.getUrl())
@@ -157,17 +151,10 @@ public class PaymentService {
     @Transactional
     public void handleCheckoutCompleted(Session session) {
         String sessionId = session.getId();
-        String reservationIdStr = session.getMetadata().get("reservationId");
         String userIdStr = session.getMetadata().get("userId");
         String paymentIntentId = session.getPaymentIntent();
         String paymentStatus = session.getPaymentStatus();
         String stallIdsStr = session.getMetadata().get("stallIds");
-
-        if (reservationIdStr == null) {
-            log.warn("Stripe session {} missing reservationId metadata", sessionId);
-            return;
-        }
-        Long reservationId = Long.valueOf(reservationIdStr);
 
         Payment payment = paymentRepository.findByStripeSessionId(sessionId).orElse(null);
         if (payment != null) {
@@ -180,26 +167,29 @@ public class PaymentService {
             paymentRepository.save(payment);
         }
 
+        List<Long> stallIds = parseStallIds(stallIdsStr);
         if (!"paid".equalsIgnoreCase(paymentStatus)) {
             log.warn("Stripe session {} completed without payment status 'paid' (status={})", sessionId, paymentStatus);
-            reservationService.cancelPendingReservation(reservationId, paymentIntentId, parseStallIds(stallIdsStr));
+            reservationService.releaseHoldsAfterFailedPayment(stallIds, resolveUser(userIdStr, payment));
             return;
         }
 
         // finalize reservation (book stalls, generate QR & send email)
-        reservationService.finalizeReservationPayment(
-                reservationId,
-                parseStallIds(stallIdsStr),
+        Reservation reservation = reservationService.createReservationAfterSuccessfulPayment(
+                stallIds,
+                resolveUser(userIdStr, payment),
+                Optional.ofNullable(payment).map(Payment::getAmount).orElse(0L),
+                Optional.ofNullable(payment).map(Payment::getCurrency).orElse(session.getCurrency()),
                 sessionId,
                 paymentIntentId
         );
 
-        User vendor = null;
-        if (payment != null && payment.getUserId() != null) {
-            vendor = userRepository.findById(payment.getUserId()).orElse(null);
-        } else if (userIdStr != null) {
-            vendor = userRepository.findById(Long.valueOf(userIdStr)).orElse(null);
+        if (payment != null && reservation != null) {
+            payment.setReservationId(reservation.getId());
+            paymentRepository.save(payment);
         }
+
+        User vendor = resolveUser(userIdStr, payment);
 
         PaymentResponse response = payment != null ? toResponse(payment) : null;
         if (response != null) {
@@ -218,6 +208,16 @@ public class PaymentService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private User resolveUser(String userIdStr, Payment payment) {
+        if (payment != null && payment.getUserId() != null) {
+            return userRepository.findById(payment.getUserId()).orElse(null);
+        }
+        if (userIdStr != null) {
+            return userRepository.findById(Long.valueOf(userIdStr)).orElse(null);
+        }
+        return null;
     }
 
     private List<Long> parseStallIds(String stallIdsStr) {
