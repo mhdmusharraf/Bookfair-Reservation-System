@@ -238,7 +238,7 @@ public class PaymentService {
                 .flatMap(userRepository::findById)
                 .orElse(null);
         Reservation reservation = Optional.ofNullable(payment.getReservationId())
-                .flatMap(reservationRepository::findById)
+                .flatMap(reservationRepository::findWithStallsById)
                 .orElse(null);
 
         List<String> stallCodes = reservation == null

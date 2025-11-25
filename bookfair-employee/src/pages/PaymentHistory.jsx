@@ -23,6 +23,10 @@ const PaymentHistory = () => {
 
   useEffect(() => {
     let active = true;
+    const normalizePayment = (payment) => ({
+      ...payment,
+      stalls: payment?.stalls ?? payment?.stallCodes ?? [],
+    });
 
     const load = async () => {
       setLoading(true);
@@ -31,7 +35,11 @@ const PaymentHistory = () => {
         const { data } = await fetchPayments();
         if (!active) return;
         const list = Array.isArray(data) ? data : [];
-        setPayments(list);
+        const paid = list
+          .filter((item) => item?.status === "SUCCEEDED")
+          .map(normalizePayment)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setPayments(paid);
       } catch (err) {
         if (!active) return;
         const message = err?.response?.data?.message || err?.message || "Unable to load payments";
@@ -53,10 +61,14 @@ const PaymentHistory = () => {
     const client = createStompClient();
     client.connect();
     const subId = client.subscribe("/topic/payments/history", (payload) => {
-      if (!payload?.id) return;
+      if (!payload?.id || payload?.status !== "SUCCEEDED") return;
       setPayments((prev) => {
         const others = prev.filter((item) => item.id !== payload.id);
-        return [payload, ...others].sort(
+         const normalized = {
+          ...payload,
+          stalls: payload?.stalls ?? payload?.stallCodes ?? [],
+        };
+        return [normalized, ...others].sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
       });
