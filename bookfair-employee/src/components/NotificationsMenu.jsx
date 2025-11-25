@@ -54,11 +54,11 @@ export default function NotificationsMenu() {
 
   return (
     <>
-      {/* <IconButton color="inherit" onClick={handleOpen} sx={{ position: "relative" }}>
+      <IconButton color="inherit" onClick={handleOpen} sx={{ position: "relative" }}>
         <Badge color="error" badgeContent={unreadCount} max={99} invisible={unreadCount === 0}>
           <NotificationsIcon />
         </Badge>
-      </IconButton> */}
+      </IconButton> 
       <Menu anchorEl={anchorEl} open={open} onClose={handleClose} keepMounted>
         <Box sx={{ px: 2, py: 1.5, display: "flex", alignItems: "center", gap: 2 }}>
           <Box>
@@ -97,14 +97,17 @@ export default function NotificationsMenu() {
                 primary={notification.title}
                 primaryTypographyProps={{ fontWeight: notification.read ? 500 : 700 }}
                 secondary={
-                  <>
-                    <Typography variant="body2" color="text.secondary">
+                  <Box
+                    component="span"
+                    sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}
+                  >
+                    <Typography component="span" variant="body2" color="text.secondary">
                       {notification.message}
                     </Typography>
-                    <Typography variant="caption" color="text.disabled">
+                    <Typography component="span" variant="caption" color="text.disabled">
                       {formatTimestamp(notification.createdAt)}
                     </Typography>
-                  </>
+                  </Box>
                 }
               />
             </ListItemButton>
@@ -120,4 +123,3 @@ export default function NotificationsMenu() {
     </>
   );
 }
-

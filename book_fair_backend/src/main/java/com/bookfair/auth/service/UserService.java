@@ -6,6 +6,8 @@ import com.bookfair.auth.dto.LoginRequest;
 import com.bookfair.auth.dto.RegisterRequest;
 import com.bookfair.auth.dto.UserProfileResponse;
 import com.bookfair.auth.entity.User;
+import com.bookfair.auth.entity.RefreshToken;
+import com.bookfair.auth.repository.RefreshTokenRepository;
 import com.bookfair.auth.repository.UserRepository;
 import com.bookfair.auth.security.JwtService;
 import com.bookfair.common.constants.AccountStatus;
@@ -32,6 +34,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final VendorAccessService vendorAccessService;
@@ -94,19 +97,6 @@ public class UserService {
         return buildAuthSession(user, request.getPortal());
     }
 
-    public AuthSession refreshSession(String refreshToken, LoginPortal portal) {
-        if (!StringUtils.hasText(refreshToken)) {
-            throw new AccessDeniedException("Missing refresh token");
-        }
-        String email = jwtService.extractUsername(refreshToken);
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AccessDeniedException("Unable to resolve refresh token subject"));
-        if (!jwtService.isRefreshTokenValidForPortal(refreshToken, user, portal)) {
-            throw new AccessDeniedException("Refresh token is invalid or expired");
-        }
-        return buildAuthSession(user, portal);
-    }
-
     private void validatePortalAccess(User user, LoginPortal portal) {
         if (portal == LoginPortal.EMPLOYEE && user.getRoles().stream().noneMatch(role -> role == Role.EMPLOYEE || role == Role.ADMIN)) {
             throw new AccessDeniedException("Only employees can login to the employee portal");
@@ -148,7 +138,7 @@ public class UserService {
 
     private AuthSession buildAuthSession(User user, LoginPortal portal) {
         String accessToken = jwtService.generateAccessToken(user, portal);
-        String refreshToken = jwtService.generateRefreshToken(user, portal);
+        String refreshToken = createAndPersistRefreshToken(user, portal);
         AuthResponse response = AuthResponse.builder()
                 .user(buildProfile(user))
                 .expiresAt(jwtService.extractExpiration(accessToken))
@@ -161,6 +151,72 @@ public class UserService {
                 .refreshTokenTtlSeconds(jwtService.getRefreshTokenTtlSeconds())
                 .portal(portal)
                 .build();
+    }
+
+    @Transactional
+    public AuthSession refreshSession(String refreshToken, LoginPortal portal) {
+        if (!StringUtils.hasText(refreshToken)) {
+            throw new AccessDeniedException("Missing refresh token");
+        }
+
+        // 1. Look up the refresh token record so we can enforce revocation and expiry independent of the access token
+        RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new AccessDeniedException("Refresh token is not recognized"));
+
+        // 2. Ensure the token has not been manually revoked or expired in the database
+        if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new AccessDeniedException("Refresh token is invalid or expired");
+        }
+
+        User user = storedToken.getUser();
+        validatePortalAccess(user, storedToken.getPortal());
+        if (portal != null && portal != storedToken.getPortal()) {
+            throw new AccessDeniedException("Refresh token does not match the requested portal");
+        }
+
+        // 3. Validate the refresh token's signature and claims without relying on the access token
+        if (!jwtService.isRefreshTokenValidForPortal(refreshToken, user, storedToken.getPortal())) {
+            throw new AccessDeniedException("Refresh token signature is invalid");
+        }
+
+        // 4. Rotate the refresh token to prevent reuse attacks before issuing a new pair of tokens
+        storedToken.setRevoked(true);
+        refreshTokenRepository.save(storedToken);
+
+        // 5. Generate brand new tokens and persist the rotated refresh token
+        String newRefreshToken = createAndPersistRefreshToken(user, storedToken.getPortal());
+        String accessToken = jwtService.generateAccessToken(user, storedToken.getPortal());
+
+        AuthResponse response = AuthResponse.builder()
+                .user(buildProfile(user))
+                .expiresAt(jwtService.extractExpiration(accessToken))
+                .build();
+
+        return AuthSession.builder()
+                .response(response)
+                .accessToken(accessToken)
+                .refreshToken(newRefreshToken)
+                .accessTokenTtlSeconds(jwtService.getAccessTokenTtlSeconds())
+                .refreshTokenTtlSeconds(jwtService.getRefreshTokenTtlSeconds())
+                .portal(storedToken.getPortal())
+                .build();
+    }
+
+    private String createAndPersistRefreshToken(User user, LoginPortal portal) {
+        // Clean up any already expired tokens for the user to keep the table small
+        refreshTokenRepository.deleteByUserAndExpiresAtBefore(user, LocalDateTime.now());
+
+        // Build a new signed refresh token that carries only refresh claims
+        String refreshToken = jwtService.generateRefreshToken(user, portal);
+        RefreshToken tokenRecord = RefreshToken.builder()
+                .user(user)
+                .token(refreshToken)
+                .portal(portal)
+                .expiresAt(jwtService.extractExpiration(refreshToken))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(tokenRecord);
+        return refreshToken;
     }
 }
 

@@ -42,9 +42,13 @@ security:
     access-expiration-minutes: 30
     refresh-expiration-days: 14
     cookie-domain: ""
-    cookie-secure: false
-    cookie-same-site: Lax
-
+    cookie-secure: true
+    cookie-same-site: Strict
+stripe:
+  api-key: sk_test_51R0kS6BCn3FapvWYeII4E0Z5A0Aaw9RU8PAqbB1qjCJ2Ms84XT2fLiwNFK2in4GDFdu8S6BaKHuBnVqWBolksyCC00gwErOJ6I         # secret key (keep in env/CI)
+  webhook-secret: whsec_507884ea52f4a8c554c0b5a2769ebd06b64eb20e3b463cf44a644b6f8b89e710  # webhook signing secret
+  success-url: "http://localhost:5174/payment-success?session_id={CHECKOUT_SESSION_ID}"
+  cancel-url: "http://localhost:5174/"
 server:
   port: 8088
 

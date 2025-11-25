@@ -100,9 +100,9 @@ const RegisteredBusinesses = () => {
             <TableCell sx={{ fontWeight: "bold" }} align="center">
               Stalls - Genre
             </TableCell>
-            <TableCell sx={{ fontWeight: "bold" }} align="center">
+            {/* <TableCell sx={{ fontWeight: "bold" }} align="center">
               Actions
-            </TableCell>
+            </TableCell> */}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -123,11 +123,11 @@ const RegisteredBusinesses = () => {
                 <TableCell align="center">
                   {business.stalls.length ? business.stalls.join(", ") : "—"}
                 </TableCell>
-                <TableCell align="center">
+                {/* <TableCell align="center">
                   <IconButton onClick={() => deleteBusiness(business.id)}>
                     <DeleteIcon color="error" />
                   </IconButton>
-                </TableCell>
+                </TableCell> */}
               </TableRow>
             ))
           )}

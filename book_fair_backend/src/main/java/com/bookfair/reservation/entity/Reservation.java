@@ -2,18 +2,7 @@ package com.bookfair.reservation.entity;
 
 import com.bookfair.auth.entity.User;
 import com.bookfair.stall.entity.Stall;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,6 +40,23 @@ public class Reservation {
             joinColumns = @JoinColumn(name = "reservation_id"),
             inverseJoinColumns = @JoinColumn(name = "stall_id"))
     private Set<Stall> stalls = new HashSet<>();
+
+    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private ReservationStatus status = ReservationStatus.PENDING_PAYMENT;
+
+    @Column(name = "total_amount")
+    private Long totalAmount; // store in cents
+
+    @Column(name = "currency", length = 10)
+    private String currency = "usd";
+
+    @Column(name = "stripe_session_id")
+    private String stripeSessionId;
+
+    @Column(name = "payment_intent_id")
+    private String paymentIntentId;
 
     @Column(name = "reserved_at", nullable = false)
     private LocalDateTime reservedAt;
