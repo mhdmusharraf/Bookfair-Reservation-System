@@ -50,10 +50,8 @@ export default function Login() {
     return !hasErrors;
   };
 
-  // live validation after first attempt
   useEffect(() => {
     if (triedSubmit) validate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [email, password, triedSubmit]);
 
   const onSubmit = async (event) => {

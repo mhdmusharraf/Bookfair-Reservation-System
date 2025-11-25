@@ -11,11 +11,12 @@ import StallSvgMap from "../components/StallSvgMap";
 import StallLegend from "../components/StallLegend";
 import GenreSelector from "../components/GenreSelector";
 import PricingCard from "../components/PricingCard";
-import { fetchStalls, reserveStalls, holdStall, releaseStallHold, releaseAllStallHolds } from "../api/stalls";
+import { fetchStalls, holdStall, releaseStallHold, releaseAllStallHolds } from "../api/stalls";
 import { fetchMyReservedStallCodes } from "../api/reservations";
 import { useAuth } from "../context/AuthContext";
 import VendorApprovalGate from "../components/VendorApprovalGate";
 import { createStompClient } from "../utils/simpleStomp";
+import { createCheckoutSession } from "../api/payments";
 
 export default function Dashboard() {
   const [stalls, setStalls] = useState([]);
@@ -36,9 +37,8 @@ export default function Dashboard() {
   const [currentLabel, setCurrentLabel] = useState(""); // S-## / M-## / L-##
   const [tempGenres, setTempGenres] = useState([]);
 
-  // confirm & payment
+  // confirm
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReserving, setIsReserving] = useState(false);
 
   useEffect(() => {
@@ -195,32 +195,19 @@ export default function Dashboard() {
     setConfirmModalOpen(true);
   };
 
-  const handleProceedToPayment = () => {
-    setConfirmModalOpen(false);
-    setIsPaymentModalOpen(true);
-  };
-
   const handleFinalConfirm = async () => {
     setIsReserving(true);
 
-    const reservations = Array.from(selectedStalls.values()).map(item => ({
-      stallId: item.stall.id,
-      genres: item.genres,
-    }));
+    const stallIds = Array.from(selectedStalls.values()).map((item) => item.stall.id);
 
     try {
-      const { data } = await reserveStalls({ reservations });
-      const reservedList = Array.isArray(data?.reserved) ? data.reserved : (data?.stalls ?? []);
-      const reservedCount = reservedList.length || reservations.length;
-      setInfo(`Reserved ${reservedCount} stall(s) successfully.`);
-
-      const { data: fresh } = await fetchStalls();
-      setStalls(fresh);
-
-      const { data: codes } = await fetchMyReservedStallCodes(user.email, fresh);
-      setMyReservedCodes(new Set(codes));
-      setSelectedStalls(new Map());
-      // TODO: Show QR using data.qrUrl if needed
+      const { data } = await createCheckoutSession({ stallIds, currency: "lkr" });
+      setInfo("Redirecting to payment...");
+      if (data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error("Missing checkout URL");
+      }
     } catch (error) {
       const message =
         error?.response?.data?.message || error?.message || "Reservation failed.";
@@ -228,11 +215,6 @@ export default function Dashboard() {
     } finally {
       setIsReserving(false);
     }
-  };
-
-  const handleMockPaymentAndReserve = async () => {
-    setIsPaymentModalOpen(false);
-    await handleFinalConfirm();
   };
 
   const removeFromCart = useCallback(async (stallId) => {
@@ -482,7 +464,12 @@ export default function Dashboard() {
       </Dialog>
 
       {/* Confirm modal */}
-      <Dialog open={isConfirmModalOpen} onClose={() => setConfirmModalOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={isConfirmModalOpen}
+        onClose={() => { if (!isReserving) setConfirmModalOpen(false); }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Review & Confirm Reservation</DialogTitle>
 
         <DialogContent dividers>
@@ -583,34 +570,17 @@ export default function Dashboard() {
           </Stack>
 
           <Alert severity="warning" variant="outlined" sx={{ mt: 2 }}>
-            This action is final and cannot be undone after payment.
+            You will be redirected to the secure payment page to finalize this reservation.
+            Please double-check your stall details before proceeding.
           </Alert>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setConfirmModalOpen(false)} color="inherit">Back</Button>
-          <Button onClick={handleProceedToPayment} variant="contained" autoFocus>
-            Proceed to Payment
+          <Button onClick={() => setConfirmModalOpen(false)} color="inherit" disabled={isReserving}>
+            Back
           </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Payment mock (keep for now, or swap to Stripe dialog per earlier step) */}
-      <Dialog open={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)}>
-        <DialogTitle>Payment</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            This is where the payment gateway integration will go.
-            <br /><br />
-            Total Amount: <b>{currency.format(estimatedTotal)}</b>
-            <br /><br />
-            Clicking "Pay Now" will complete the reservation.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsPaymentModalOpen(false)} color="inherit">Cancel</Button>
-          <Button onClick={handleMockPaymentAndReserve} variant="contained" disabled={isReserving}>
-            {isReserving ? <CircularProgress size={24} /> : "Pay Now (Mock)"}
+          <Button onClick={handleFinalConfirm} variant="contained" autoFocus disabled={isReserving}>
+            {isReserving ? <CircularProgress size={24} /> : "Confirm Reservation"}
           </Button>
         </DialogActions>
       </Dialog>

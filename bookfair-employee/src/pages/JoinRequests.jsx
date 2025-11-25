@@ -15,6 +15,7 @@ import {
 import CheckIcon from "@mui/icons-material/Check";
 import { fetchVendorAccessRequests, approveVendorAccess } from "../api/vendorAccess";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../context/NotificationContext";
 import { createStompClient } from "../utils/simpleStomp";
 
 const JoinRequests = () => {
@@ -22,6 +23,7 @@ const JoinRequests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const { user } = useAuth();
+  const { markByType } = useNotifications();
 
   useEffect(() => {
     let active = true;
@@ -53,6 +55,7 @@ const JoinRequests = () => {
 
   useEffect(() => {
     if (!user) return;
+    markByType("VENDOR_ACCESS_REQUEST");
     const client = createStompClient();
     client.connect();
     const subId = client.subscribe("/topic/vendor-access/requests", (payload) => {
@@ -69,7 +72,7 @@ const JoinRequests = () => {
       client.unsubscribe(subId);
       client.disconnect();
     };
-  }, [user?.id]);
+  }, [user?.id, markByType]);
 
   const handleApprove = async (requestId) => {
     try {
