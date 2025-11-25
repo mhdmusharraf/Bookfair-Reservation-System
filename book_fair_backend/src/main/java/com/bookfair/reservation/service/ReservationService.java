@@ -189,6 +189,10 @@ public class ReservationService {
             return;
         }
 
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new IllegalStateException("Reservation " + reservationId + " was cancelled and cannot be finalized");
+        }
+
         List<Stall> stalls = new ArrayList<>(reservation.getStalls());
 
         stallHoldService.finalizeForReservation(stalls, reservation.getUser());
@@ -210,6 +214,31 @@ public class ReservationService {
         realTimeGateway.publishReservation(toResponse(reservation));
 
         log.info("Reservation {} finalized as PAID", reservationId);
+    }
+
+    /* ==========================================================
+     * 4. CANCEL PENDING RESERVATION (FAILED PAYMENT)
+     * ========================================================== */
+    @Transactional
+    public void cancelPendingReservation(Long reservationId, String paymentIntentId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
+
+        if (reservation.getStatus() == ReservationStatus.PAID) {
+            log.info("Reservation {} already PAID; skipping cancel", reservationId);
+            return;
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setPaymentIntentId(paymentIntentId);
+
+        List<Stall> stalls = new ArrayList<>(reservation.getStalls());
+        for (Stall stall : stalls) {
+            stallHoldService.release(stall.getId(), reservation.getUser(), true);
+        }
+
+        reservationRepository.save(reservation);
+        log.info("Reservation {} cancelled and holds released", reservationId);
     }
 
     /* ==========================================================
