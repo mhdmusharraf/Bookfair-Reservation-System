@@ -52,6 +52,7 @@ public class ReservationService {
         }
 
         long existingStalls = existingReservations.stream()
+                .filter(r -> r.getStatus() != ReservationStatus.CANCELLED)
                 .mapToLong(r -> r.getStalls().size())
                 .sum();
 
@@ -128,6 +129,7 @@ public class ReservationService {
         }
 
         long existingStalls = reservationRepository.findByUser(user).stream()
+                .filter(r -> r.getStatus() != ReservationStatus.CANCELLED)
                 .mapToLong(r -> r.getStalls().size())
                 .sum();
 
