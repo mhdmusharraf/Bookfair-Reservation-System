@@ -164,13 +164,6 @@ public class ReservationService {
                 .totalAmount(totalAmountCents)
                 .currency(currency)
                 .build();
-
-        for (Stall stall : held) {
-            reservation.getStalls().add(stall);
-            stall.getReservations().add(reservation);
-        }
-
-
         reservation = reservationRepository.save(reservation);
 
         log.info("Created PENDING_PAYMENT reservation {} for {}", reservation.getId(), user.getEmail());
@@ -181,7 +174,12 @@ public class ReservationService {
      * 3. FINALIZE PAYMENT (CALLED FROM STRIPE WEBHOOK)
      * ========================================================== */
     @Transactional
-    public void finalizeReservationPayment(Long reservationId, String sessionId, String paymentIntentId) {
+    public void finalizeReservationPayment(
+            Long reservationId,
+            List<Long> stallIds,
+            String sessionId,
+            String paymentIntentId
+    ) {
 
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
@@ -196,8 +194,20 @@ public class ReservationService {
         }
 
         List<Stall> stalls = new ArrayList<>(reservation.getStalls());
+        if (stalls.isEmpty() && stallIds != null && !stallIds.isEmpty()) {
+            stalls = stallRepository.findAllById(stallIds);
+        }
+
+        if (stalls.isEmpty()) {
+            throw new IllegalStateException("No stalls found for reservation " + reservationId);
+        }
 
         stallHoldService.finalizeForReservation(stalls, reservation.getUser());
+
+        for (Stall stall : stalls) {
+            reservation.getStalls().add(stall);
+            stall.getReservations().add(reservation);
+        }
 
         reservation.setStatus(ReservationStatus.PAID);
         reservation.setStripeSessionId(sessionId);
@@ -222,7 +232,7 @@ public class ReservationService {
      * 4. CANCEL PENDING RESERVATION (FAILED PAYMENT)
      * ========================================================== */
     @Transactional
-    public void cancelPendingReservation(Long reservationId, String paymentIntentId) {
+    public void cancelPendingReservation(Long reservationId, String paymentIntentId, List<Long> stallIds) {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new IllegalArgumentException("Reservation not found"));
 
@@ -235,9 +245,14 @@ public class ReservationService {
         reservation.setPaymentIntentId(paymentIntentId);
 
         List<Stall> stalls = new ArrayList<>(reservation.getStalls());
+        if (stalls.isEmpty() && stallIds != null && !stallIds.isEmpty()) {
+            stalls = stallRepository.findAllById(stallIds);
+        }
         for (Stall stall : stalls) {
             stallHoldService.release(stall.getId(), reservation.getUser(), true);
         }
+
+        reservation.getStalls().clear();
 
         reservationRepository.save(reservation);
         log.info("Reservation {} cancelled and holds released", reservationId);

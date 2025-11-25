@@ -100,6 +100,10 @@ public class PaymentService {
                 // include metadata for webhook: reservationId
                 .putMetadata("reservationId", String.valueOf(reservation.getId()))
                 .putMetadata("userId", String.valueOf(user.getId()))
+                .putMetadata("stallIds", stallIds.stream()
+                        .map(String::valueOf)
+                        .toList()
+                        .toString())
                 .build();
 
         Session session = Session.create(params);
@@ -157,6 +161,7 @@ public class PaymentService {
         String userIdStr = session.getMetadata().get("userId");
         String paymentIntentId = session.getPaymentIntent();
         String paymentStatus = session.getPaymentStatus();
+        String stallIdsStr = session.getMetadata().get("stallIds");
 
         if (reservationIdStr == null) {
             log.warn("Stripe session {} missing reservationId metadata", sessionId);
@@ -177,12 +182,17 @@ public class PaymentService {
 
         if (!"paid".equalsIgnoreCase(paymentStatus)) {
             log.warn("Stripe session {} completed without payment status 'paid' (status={})", sessionId, paymentStatus);
-            reservationService.cancelPendingReservation(reservationId, paymentIntentId);
+            reservationService.cancelPendingReservation(reservationId, paymentIntentId, parseStallIds(stallIdsStr));
             return;
         }
 
         // finalize reservation (book stalls, generate QR & send email)
-        reservationService.finalizeReservationPayment(reservationId, sessionId, paymentIntentId);
+        reservationService.finalizeReservationPayment(
+                reservationId,
+                parseStallIds(stallIdsStr),
+                sessionId,
+                paymentIntentId
+        );
 
         User vendor = null;
         if (payment != null && payment.getUserId() != null) {
@@ -207,6 +217,19 @@ public class PaymentService {
         return paymentRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
                 .map(this::toResponse)
+                .toList();
+    }
+
+    private List<Long> parseStallIds(String stallIdsStr) {
+        if (stallIdsStr == null || stallIdsStr.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(stallIdsStr.replace("[", "")
+                        .replace("]", "")
+                        .split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::valueOf)
                 .toList();
     }
 
