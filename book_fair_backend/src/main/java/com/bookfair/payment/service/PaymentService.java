@@ -155,6 +155,7 @@ public class PaymentService {
         String reservationIdStr = session.getMetadata().get("reservationId");
         String userIdStr = session.getMetadata().get("userId");
         String paymentIntentId = session.getPaymentIntent();
+        String paymentStatus = session.getPaymentStatus();
 
         if (reservationIdStr == null) {
             log.warn("Stripe session {} missing reservationId metadata", sessionId);
@@ -165,8 +166,18 @@ public class PaymentService {
         Payment payment = paymentRepository.findByStripeSessionId(sessionId).orElse(null);
         if (payment != null) {
             payment.setPaymentIntentId(paymentIntentId);
-            payment.setStatus(PaymentStatus.SUCCEEDED);
+            if ("paid".equalsIgnoreCase(paymentStatus)) {
+                payment.setStatus(PaymentStatus.SUCCEEDED);
+            } else {
+                payment.setStatus(PaymentStatus.FAILED);
+            }
             paymentRepository.save(payment);
+        }
+
+        if (!"paid".equalsIgnoreCase(paymentStatus)) {
+            log.warn("Stripe session {} completed without payment status 'paid' (status={})", sessionId, paymentStatus);
+            reservationService.cancelPendingReservation(reservationId, paymentIntentId);
+            return;
         }
 
         // finalize reservation (book stalls, generate QR & send email)
