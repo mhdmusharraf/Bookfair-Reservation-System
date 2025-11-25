@@ -94,7 +94,7 @@ public class PaymentService {
 
         SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(successUrl.replace("{CHECKOUT_SESSION_ID}", "{CHECKOUT_SESSION_ID}"))
+                .setSuccessUrl(successUrl)
                 .setCancelUrl(cancelUrl)
                 .addAllLineItem(Arrays.asList(lineItem))
                 // include metadata for webhook
@@ -154,6 +154,7 @@ public class PaymentService {
         String userIdStr = session.getMetadata().get("userId");
         String paymentIntentId = session.getPaymentIntent();
         String paymentStatus = session.getPaymentStatus();
+        String checkoutStatus = session.getStatus();
         String stallIdsStr = session.getMetadata().get("stallIds");
 
         Payment payment = paymentRepository.findByStripeSessionId(sessionId).orElse(null);
@@ -168,8 +169,9 @@ public class PaymentService {
         }
 
         List<Long> stallIds = parseStallIds(stallIdsStr);
-        if (!"paid".equalsIgnoreCase(paymentStatus)) {
-            log.warn("Stripe session {} completed without payment status 'paid' (status={})", sessionId, paymentStatus);
+        boolean paymentCaptured = "paid".equalsIgnoreCase(paymentStatus) || "complete".equalsIgnoreCase(checkoutStatus);
+        if (!paymentCaptured) {
+            log.warn("Stripe session {} completed without captured payment (payment_status={}, status={})", sessionId, paymentStatus, checkoutStatus);
             reservationService.releaseHoldsAfterFailedPayment(stallIds, resolveUser(userIdStr, payment));
             return;
         }
