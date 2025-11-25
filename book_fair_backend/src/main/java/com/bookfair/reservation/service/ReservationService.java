@@ -40,41 +40,20 @@ public class ReservationService {
     private final StallHoldService stallHoldService;
     private final RealTimeGateway realTimeGateway;
 
+    @Transactional
+    public void ensureStallsReadyForPayment(List<Long> stallIds, User user) {
+        validateStallsForUser(stallIds, user);
+
+        // Refresh holds to make sure the vendor keeps ownership while paying
+        stallIds.forEach(stallId -> stallHoldService.hold(stallId, user));
+    }
+
     /* ==========================================================
      * 1. ORIGINAL CREATE RESERVATION (NO PAYMENT)
      * ========================================================== */
     @Transactional
     public ReservationResponse createReservation(ReservationRequest request, User user) {
-        List<Reservation> existingReservations = reservationRepository.findByUser(user);
-
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Vendor account is pending employee approval");
-        }
-
-        long existingStalls = existingReservations.stream()
-                .mapToLong(r -> r.getStalls().size())
-                .sum();
-
-        if (existingStalls + request.getStallIds().size() > MAX_STALLS_PER_VENDOR) {
-            throw new IllegalStateException("Reservation limit exceeded. Maximum of 3 stalls per business");
-        }
-
-        List<Stall> stalls = stallRepository.findAllById(request.getStallIds());
-        if (stalls.size() != request.getStallIds().size()) {
-            throw new IllegalArgumentException("One or more stalls do not exist");
-        }
-
-        stalls.forEach(stall -> {
-            StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
-            if (status == StallStatus.BOOKED) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
-            }
-            if (status == StallStatus.IN_PROGRESS
-                    && stall.getHeldBy() != null
-                    && !stall.getHeldBy().getId().equals(user.getId())) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is being held by another vendor");
-            }
-        });
+        List<Stall> stalls = validateStallsForUser(request.getStallIds(), user);
 
         Reservation reservation = Reservation.builder()
                 .user(user)
@@ -118,34 +97,7 @@ public class ReservationService {
             String currency
     ) {
 
-        if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Vendor account is pending employee approval");
-        }
-
-        List<Stall> stalls = stallRepository.findAllById(stallIds);
-        if (stalls.size() != stallIds.size()) {
-            throw new IllegalArgumentException("One or more stalls do not exist");
-        }
-
-        long existingStalls = reservationRepository.findByUser(user).stream()
-                .mapToLong(r -> r.getStalls().size())
-                .sum();
-
-        if (existingStalls + stallIds.size() > MAX_STALLS_PER_VENDOR) {
-            throw new IllegalStateException("Reservation limit exceeded. Maximum of 3 stalls per business");
-        }
-
-        stalls.forEach(stall -> {
-            StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
-            if (status == StallStatus.BOOKED) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
-            }
-            if (status == StallStatus.IN_PROGRESS
-                    && stall.getHeldBy() != null
-                    && !stall.getHeldBy().getId().equals(user.getId())) {
-                throw new IllegalStateException("Stall " + stall.getCode() + " is being held by another vendor");
-            }
-        });
+        List<Stall> stalls = validateStallsForUser(stallIds, user);
 
         // HOLD stalls (not finalize)
         List<Stall> held = new ArrayList<>();
@@ -257,6 +209,72 @@ public class ReservationService {
     }
 
     /* ==========================================================
+     * 5. CREATE RESERVATION AFTER PAYMENT SUCCESS
+     * ========================================================== */
+    @Transactional
+    public Reservation createReservationAfterSuccessfulPayment(
+            List<Long> stallIds,
+            User user,
+            long totalAmountCents,
+            String currency,
+            String sessionId,
+            String paymentIntentId
+    ) {
+        if (user == null) {
+            throw new IllegalArgumentException("Unable to determine user for reservation");
+        }
+
+        List<Stall> stalls = validateStallsForUser(stallIds, user);
+        stallHoldService.finalizeForReservation(stalls, user);
+
+        Reservation reservation = Reservation.builder()
+                .user(user)
+                .reservedAt(LocalDateTime.now())
+                .confirmationCode(generateConfirmationCode())
+                .emailSentTo(user.getEmail())
+                .status(ReservationStatus.PAID)
+                .totalAmount(totalAmountCents)
+                .currency(currency)
+                .stripeSessionId(sessionId)
+                .paymentIntentId(paymentIntentId)
+                .build();
+
+        stalls.forEach(stall -> {
+            reservation.getStalls().add(stall);
+            stall.getReservations().add(reservation);
+        });
+
+        byte[] qrBytes = qrCodeService.generateQrCode(reservation.getConfirmationCode(), 300, 300);
+        reservation.setQrCode(qrBytes);
+
+        Reservation saved = reservationRepository.save(reservation);
+
+        emailService.sendReservationConfirmation(user, saved, qrBytes);
+        List<User> employees = userRepository.findAllByRole(Role.EMPLOYEE);
+        emailService.sendReservationNotificationToEmployees(saved, employees, qrBytes);
+        realTimeGateway.publishReservation(toResponse(saved));
+
+        log.info("Reservation {} created after successful payment for user {}", saved.getId(), user.getEmail());
+        return saved;
+    }
+
+    /* ==========================================================
+     * 6. CLEANUP AFTER PAYMENT FAILURE
+     * ========================================================== */
+    @Transactional
+    public void releaseHoldsAfterFailedPayment(List<Long> stallIds, User user) {
+        if (stallIds == null || stallIds.isEmpty()) {
+            return;
+        }
+        if (user == null) {
+            log.warn("Unable to release holds for payment failure because user is unknown");
+            return;
+        }
+        stallIds.forEach(stallId -> stallHoldService.release(stallId, user, true));
+        log.info("Released {} stall hold(s) after failed payment for {}", stallIds.size(), user.getEmail());
+    }
+
+    /* ==========================================================
      * REST OF ORIGINAL METHODS
      * ========================================================== */
 
@@ -292,6 +310,38 @@ public class ReservationService {
                 .vendorEmail(reservation.getUser().getEmail())
                 .vendorContactNumber(reservation.getUser().getContactNumber())
                 .build();
+    }
+
+    private List<Stall> validateStallsForUser(List<Long> stallIds, User user) {
+        if (user.getStatus() != AccountStatus.ACTIVE) {
+            throw new IllegalStateException("Vendor account is pending employee approval");
+        }
+
+        List<Stall> stalls = stallRepository.findAllById(stallIds);
+        if (stalls.size() != stallIds.size()) {
+            throw new IllegalArgumentException("One or more stalls do not exist");
+        }
+
+        long existingStalls = reservationRepository.findByUser(user).stream()
+                .mapToLong(r -> r.getStalls().size())
+                .sum();
+
+        if (existingStalls + stallIds.size() > MAX_STALLS_PER_VENDOR) {
+            throw new IllegalStateException("Reservation limit exceeded. Maximum of 3 stalls per business");
+        }
+
+        stalls.forEach(stall -> {
+            StallStatus status = stall.getStatus() != null ? stall.getStatus() : StallStatus.AVAILABLE;
+            if (status == StallStatus.BOOKED) {
+                throw new IllegalStateException("Stall " + stall.getCode() + " is not available");
+            }
+            if (status == StallStatus.IN_PROGRESS
+                    && stall.getHeldBy() != null
+                    && !stall.getHeldBy().getId().equals(user.getId())) {
+                throw new IllegalStateException("Stall " + stall.getCode() + " is being held by another vendor");
+            }
+        });
+        return stalls;
     }
 
     private String generateConfirmationCode() {
