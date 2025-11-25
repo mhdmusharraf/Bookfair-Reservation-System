@@ -11,11 +11,12 @@ import StallSvgMap from "../components/StallSvgMap";
 import StallLegend from "../components/StallLegend";
 import GenreSelector from "../components/GenreSelector";
 import PricingCard from "../components/PricingCard";
-import { fetchStalls, reserveStalls, holdStall, releaseStallHold, releaseAllStallHolds } from "../api/stalls";
+import { fetchStalls, holdStall, releaseStallHold, releaseAllStallHolds } from "../api/stalls";
 import { fetchMyReservedStallCodes } from "../api/reservations";
 import { useAuth } from "../context/AuthContext";
 import VendorApprovalGate from "../components/VendorApprovalGate";
 import { createStompClient } from "../utils/simpleStomp";
+import { createCheckoutSession } from "../api/payments";
 
 export default function Dashboard() {
   const [stalls, setStalls] = useState([]);
@@ -197,25 +198,16 @@ export default function Dashboard() {
   const handleFinalConfirm = async () => {
     setIsReserving(true);
 
-    const reservations = Array.from(selectedStalls.values()).map(item => ({
-      stallId: item.stall.id,
-      genres: item.genres,
-    }));
+    const stallIds = Array.from(selectedStalls.values()).map((item) => item.stall.id);
 
     try {
-      const { data } = await reserveStalls({ reservations });
-      const reservedList = Array.isArray(data?.reserved) ? data.reserved : (data?.stalls ?? []);
-      const reservedCount = reservedList.length || reservations.length;
-      setInfo(`Reserved ${reservedCount} stall(s) successfully.`);
-
-      const { data: fresh } = await fetchStalls();
-      setStalls(fresh);
-
-      const { data: codes } = await fetchMyReservedStallCodes(user.email, fresh);
-      setMyReservedCodes(new Set(codes));
-      setSelectedStalls(new Map());
-      setConfirmModalOpen(false);
-      // TODO: Show QR using data.qrUrl if needed
+      const { data } = await createCheckoutSession({ stallIds, currency: "lkr" });
+      setInfo("Redirecting to payment...");
+      if (data?.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error("Missing checkout URL");
+      }
     } catch (error) {
       const message =
         error?.response?.data?.message || error?.message || "Reservation failed.";
@@ -578,8 +570,8 @@ export default function Dashboard() {
           </Stack>
 
           <Alert severity="warning" variant="outlined" sx={{ mt: 2 }}>
-            This action will confirm your reservation immediately. Please double-check your
-            stall details before proceeding.
+            You will be redirected to the secure payment page to finalize this reservation.
+            Please double-check your stall details before proceeding.
           </Alert>
         </DialogContent>
 

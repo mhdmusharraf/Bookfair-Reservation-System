@@ -7,33 +7,42 @@ import {
   TableHead,
   TableRow,
   Paper,
-  IconButton,
   CircularProgress,
   Typography,
+  Chip,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-
-import { fetchAllReservations } from "../api/reservations";
+import { fetchPayments } from "../api/payments";
+import { createStompClient } from "../utils/simpleStomp";
+import { useNotifications } from "../context/NotificationContext";
 
 const PaymentHistory = () => {
-  const [reservations, setReservations] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const { markByType } = useNotifications();
 
   useEffect(() => {
     let active = true;
+    const normalizePayment = (payment) => ({
+      ...payment,
+      stalls: payment?.stalls ?? payment?.stallCodes ?? [],
+    });
 
     const load = async () => {
       setLoading(true);
       setError("");
       try {
-        const { data } = await fetchAllReservations();
+        const { data } = await fetchPayments();
         if (!active) return;
-        setReservations(data ?? []);
+        const list = Array.isArray(data) ? data : [];
+        const paid = list
+          .filter((item) => item?.status === "SUCCEEDED")
+          .map(normalizePayment)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setPayments(paid);
       } catch (err) {
         if (!active) return;
-        const message =
-          err?.response?.data?.message || err?.message || "Unable to load businesses";
+        const message = err?.response?.data?.message || err?.message || "Unable to load payments";
         setError(message);
       } finally {
         if (active) setLoading(false);
@@ -41,40 +50,37 @@ const PaymentHistory = () => {
     };
 
     load();
+    markByType("PAYMENT_RECEIVED");
 
     return () => {
       active = false;
     };
+  }, [markByType]);
+
+  useEffect(() => {
+    const client = createStompClient();
+    client.connect();
+    const subId = client.subscribe("/topic/payments/history", (payload) => {
+      if (!payload?.id || payload?.status !== "SUCCEEDED") return;
+      setPayments((prev) => {
+        const others = prev.filter((item) => item.id !== payload.id);
+         const normalized = {
+          ...payload,
+          stalls: payload?.stalls ?? payload?.stallCodes ?? [],
+        };
+        return [normalized, ...others].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+    });
+
+    return () => {
+      client.unsubscribe(subId);
+      client.disconnect();
+    };
   }, []);
 
-  const businesses = useMemo(() => {
-    const map = new Map();
-    reservations.forEach((reservation) => {
-      const key = reservation.vendorEmail;
-      if (!key) {
-        return;
-      }
-      if (!map.has(key)) {
-        map.set(key, {
-          id: key,
-          businessName: reservation.vendorBusinessName,
-          email: reservation.vendorEmail,
-          phoneNumber: reservation.vendorContactNumber,
-          stalls: new Set(),
-        });
-      }
-      const entry = map.get(key);
-      (reservation.stalls ?? []).forEach((stall) => entry.stalls.add(stall));
-    });
-    return Array.from(map.values()).map((entry) => ({
-      ...entry,
-      stalls: Array.from(entry.stalls).sort(),
-    }));
-  }, [reservations]);
-
-  const deleteBusiness = (id) => {
-    setReservations((prev) => prev.filter((reservation) => reservation.vendorEmail !== id));
-  };
+  const rows = useMemo(() => payments ?? [], [payments]);
 
   if (loading) {
     return (
@@ -95,41 +101,60 @@ const PaymentHistory = () => {
         <TableHead>
           <TableRow>
             <TableCell sx={{ fontWeight: "bold" }}>Business Name</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>Phone</TableCell>
             <TableCell sx={{ fontWeight: "bold" }}>Stalls</TableCell>
             <TableCell sx={{ fontWeight: "bold" }}>Amount</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
             <TableCell sx={{ fontWeight: "bold" }} align="center">
-              Time
-            </TableCell>
-            <TableCell sx={{ fontWeight: "bold" }} align="center">
-              Date
+              Paid At
             </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {businesses.length === 0 ? (
+          {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} align="center">
+              <TableCell colSpan={7} align="center">
                 No payment history yet.
               </TableCell>
             </TableRow>
           ) : (
-            businesses.map((business) => (
-              <TableRow key={business.id}>
-                <TableCell component="th" scope="row">
-                  {business.businessName}
-                </TableCell>
-                <TableCell>{business.email}</TableCell>
-                <TableCell>{business.phoneNumber}</TableCell>
-                <TableCell align="center">
-                  {business.stalls.length ? business.stalls.join(", ") : "—"}
-                </TableCell>
-                <TableCell align="center">
-                  <IconButton onClick={() => deleteBusiness(business.id)}>
-                    <DeleteIcon color="error" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))
+            rows.map((payment) => {
+              const amount = payment.amount ?? 0;
+              const currency = (payment.currency || "LKR").toUpperCase();
+              const formatter = new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency,
+                minimumFractionDigits: 2,
+              });
+              const dateLabel = payment.createdAt
+                ? new Date(payment.createdAt).toLocaleString()
+                : "—";
+              return (
+                <TableRow key={payment.id}>
+                  <TableCell component="th" scope="row">
+                    {payment.vendorBusinessName || "Unknown"}
+                  </TableCell>
+                  <TableCell>{payment.vendorEmail || "—"}</TableCell>
+                  <TableCell>{payment.vendorContactNumber || "—"}</TableCell>
+                  <TableCell>
+                    {Array.isArray(payment.stalls) && payment.stalls.length
+                      ? payment.stalls.join(", ")
+                      : "—"}
+                  </TableCell>
+                  <TableCell>{formatter.format(amount / 100)}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={payment.status}
+                      color={payment.status === "SUCCEEDED" ? "success" : payment.status === "PENDING" ? "warning" : "error"}
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell align="center">{dateLabel}</TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
