@@ -243,6 +243,5 @@ INSERT INTO stalls (code, size, status, description) VALUES
 ('H17','MEDIUM','AVAILABLE','Stall H17 in Hall H'),
 ('H18','LARGE','AVAILABLE','Stall H18 in Hall H'),
 ('H19','SMALL','AVAILABLE','Stall H19 in Hall H'),
-('H20','MEDIUM','AVAILABLE','Stall H20 in Hall H');
-
+('H20','MEDIUM','AVAILABLE','Stall H20 in Hall H')
 ON CONFLICT (code) DO NOTHING;
