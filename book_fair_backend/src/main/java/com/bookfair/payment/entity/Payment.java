@@ -33,4 +33,11 @@ public class Payment {
     private PaymentStatus status;
 
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
 }

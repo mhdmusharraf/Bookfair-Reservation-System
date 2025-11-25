@@ -41,6 +41,13 @@ public class NotificationService {
     }
 
     @Transactional
+    public void notifyEmployeesOfPayment(User vendor, String amountFormatted) {
+        String title = "Payment received";
+        String message = vendor.getBusinessName() + " completed a payment of " + amountFormatted;
+        notifyRole(Role.EMPLOYEE, NotificationType.PAYMENT_RECEIVED, title, message, "/payment-history");
+    }
+
+    @Transactional
     public NotificationResponse createNotification(User recipient, NotificationType type, String title, String message, String link) {
         Notification notification = Notification.builder()
                 .recipient(recipient)

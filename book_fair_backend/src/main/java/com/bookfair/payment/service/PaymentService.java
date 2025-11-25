@@ -1,14 +1,20 @@
 package com.bookfair.payment.service;
 
+import com.bookfair.auth.entity.User;
+import com.bookfair.auth.repository.UserRepository;
+import com.bookfair.auth.service.UserService;
+import com.bookfair.common.realtime.RealTimeGateway;
 import com.bookfair.payment.dto.CheckoutSessionResponse;
+import com.bookfair.payment.dto.PaymentResponse;
 import com.bookfair.payment.entity.Payment;
 import com.bookfair.payment.entity.PaymentStatus;
 import com.bookfair.payment.repository.PaymentRepository;
+import com.bookfair.notification.service.NotificationService;
 import com.bookfair.reservation.entity.Reservation;
 import com.bookfair.reservation.repository.ReservationRepository;
 import com.bookfair.reservation.service.ReservationService;
-import com.bookfair.auth.entity.User;
-import com.bookfair.auth.service.UserService;
+import com.bookfair.stall.entity.Stall;
+import com.bookfair.stall.repository.StallRepository;
 import com.stripe.Stripe;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
@@ -16,8 +22,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -31,6 +37,10 @@ public class PaymentService {
     private final ReservationRepository reservationRepository;
     private final PaymentRepository paymentRepository;
     private final UserService userService; // to get current user when needed
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final RealTimeGateway realTimeGateway;
+    private final StallRepository stallRepository;
 
     @Value("${stripe.api-key}")
     private String stripeApiKey;
@@ -116,10 +126,24 @@ public class PaymentService {
     }
 
     private long calculateTotal(List<Long> stallIds) {
-        // TODO: implement your pricing logic (flat fee, per size price, etc.)
-        // Example: 20 USD per stall:
-        int perStallCents = 2000;
-        return perStallCents * stallIds.size();
+        if (stallIds == null || stallIds.isEmpty()) {
+            throw new IllegalArgumentException("No stalls provided for payment");
+        }
+        Map<String, Integer> sizePricing = Map.of(
+                "SMALL", 40000,
+                "MEDIUM", 70000,
+                "LARGE", 100000
+        );
+        List<Stall> stalls = stallRepository.findAllById(stallIds);
+        if (stalls.size() != stallIds.size()) {
+            throw new IllegalArgumentException("One or more stalls could not be priced");
+        }
+        long total = 0L;
+        for (Stall stall : stalls) {
+            Integer price = sizePricing.getOrDefault(stall.getSize(), 40000);
+            total += price * 100L; // store in cents for Stripe
+        }
+        return total;
     }
 
     /**
@@ -129,6 +153,7 @@ public class PaymentService {
     public void handleCheckoutCompleted(Session session) {
         String sessionId = session.getId();
         String reservationIdStr = session.getMetadata().get("reservationId");
+        String userIdStr = session.getMetadata().get("userId");
         String paymentIntentId = session.getPaymentIntent();
 
         if (reservationIdStr == null) {
@@ -137,14 +162,69 @@ public class PaymentService {
         }
         Long reservationId = Long.valueOf(reservationIdStr);
 
-        // mark payment record
-        paymentRepository.findByStripeSessionId(sessionId).ifPresent(payment -> {
+        Payment payment = paymentRepository.findByStripeSessionId(sessionId).orElse(null);
+        if (payment != null) {
             payment.setPaymentIntentId(paymentIntentId);
             payment.setStatus(PaymentStatus.SUCCEEDED);
             paymentRepository.save(payment);
-        });
+        }
 
         // finalize reservation (book stalls, generate QR & send email)
         reservationService.finalizeReservationPayment(reservationId, sessionId, paymentIntentId);
+
+        User vendor = null;
+        if (payment != null && payment.getUserId() != null) {
+            vendor = userRepository.findById(payment.getUserId()).orElse(null);
+        } else if (userIdStr != null) {
+            vendor = userRepository.findById(Long.valueOf(userIdStr)).orElse(null);
+        }
+
+        PaymentResponse response = payment != null ? toResponse(payment) : null;
+        if (response != null) {
+            realTimeGateway.publishPayment(response);
+        }
+
+        if (vendor != null && payment != null) {
+            String formattedAmount = String.format(Locale.US, "%.2f %s", payment.getAmount() / 100.0,
+                    Optional.ofNullable(payment.getCurrency()).orElse("USD").toUpperCase());
+            notificationService.notifyEmployeesOfPayment(vendor, formattedAmount);
+        }
+    }
+
+    public List<PaymentResponse> getAllPayments() {
+        return paymentRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private PaymentResponse toResponse(Payment payment) {
+        User vendor = Optional.ofNullable(payment.getUserId())
+                .flatMap(userRepository::findById)
+                .orElse(null);
+        Reservation reservation = Optional.ofNullable(payment.getReservationId())
+                .flatMap(reservationRepository::findById)
+                .orElse(null);
+
+        List<String> stallCodes = reservation == null
+                ? List.of()
+                : reservation.getStalls().stream()
+                .map(Stall::getCode)
+                .filter(Objects::nonNull)
+                .sorted()
+                .toList();
+
+        return PaymentResponse.builder()
+                .id(payment.getId())
+                .reservationId(payment.getReservationId())
+                .vendorBusinessName(Optional.ofNullable(vendor).map(User::getBusinessName).orElse(null))
+                .vendorEmail(Optional.ofNullable(vendor).map(User::getEmail).orElse(null))
+                .vendorContactNumber(Optional.ofNullable(vendor).map(User::getContactNumber).orElse(null))
+                .stalls(stallCodes)
+                .amount(payment.getAmount())
+                .currency(payment.getCurrency())
+                .status(payment.getStatus())
+                .createdAt(payment.getCreatedAt())
+                .build();
     }
 }

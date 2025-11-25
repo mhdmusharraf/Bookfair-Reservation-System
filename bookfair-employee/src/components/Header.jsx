@@ -20,7 +20,7 @@ import NotificationsMenu from "./NotificationsMenu";
 
 export default function Header() {
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, unreadByType } = useNotifications();
   const nav = useNavigate();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
@@ -38,9 +38,17 @@ export default function Header() {
 
   const navItems = [
     { to: "/", label: "Dashboard" },
-    { to: "/join-requests", label: "Join Requests", badge: unreadCount },
+    {
+      to: "/join-requests",
+      label: "Join Requests",
+      badge: unreadByType?.VENDOR_ACCESS_REQUEST ?? unreadCount,
+    },
     { to: "/registered-businesses", label: "Registered Businesses" },
-    { to: "/payment-history", label: "Payment History" },
+    {
+      to: "/payment-history",
+      label: "Payment History",
+      badge: unreadByType?.PAYMENT_RECEIVED ?? 0,
+    },
   ];
 
   const NavButton = ({ to, label, badge }) => (
