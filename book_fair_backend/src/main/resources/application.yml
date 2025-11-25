@@ -45,7 +45,6 @@ security:
     cookie-secure: false
     cookie-same-site: Lax
 stripe:
-  api-key: sk_test_51R0kS6BCn3FapvWYeII4E0Z5A0Aaw9RU8PAqbB1qjCJ2Ms84XT2fLiwNFK2in4GDFdu8S6BaKHuBnVqWBolksyCC00gwErOJ6I         # secret key (keep in env/CI)
   webhook-secret: whsec_ebb464efffaf26571ae94654f60fa5bbfefd92aa82dcffbe57d44d8c904680c4  # webhook signing secret
   success-url: "https://your-frontend.com/payment-success?session_id={CHECKOUT_SESSION_ID}"
   cancel-url: "https://your-frontend.com/payment-cancel"
