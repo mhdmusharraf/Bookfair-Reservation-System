@@ -61,6 +61,15 @@ export function NotificationProvider({ children }) {
     notificationsRef.current = notifications;
   }, [notifications]);
 
+  const unreadByType = useMemo(() => {
+    return notifications.reduce((acc, notification) => {
+      if (!notification.read) {
+        acc[notification.type] = (acc[notification.type] || 0) + 1;
+      }
+      return acc;
+    }, {});
+  }, [notifications]);
+
   useEffect(() => {
     if (!user) {
       if (clientRef.current) {
@@ -135,6 +144,7 @@ export function NotificationProvider({ children }) {
     () => ({
       notifications,
       unreadCount,
+      unreadByType,
       loading,
       error,
       markAsRead,
@@ -142,7 +152,7 @@ export function NotificationProvider({ children }) {
       markByType,
       reload: loadNotifications,
     }),
-    [notifications, unreadCount, loading, error, markAsRead, markAllRead, markByType, loadNotifications]
+    [notifications, unreadCount, unreadByType, loading, error, markAsRead, markAllRead, markByType, loadNotifications]
   );
 
   return <NotificationCtx.Provider value={value}>{children}</NotificationCtx.Provider>;

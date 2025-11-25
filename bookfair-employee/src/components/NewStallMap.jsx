@@ -593,12 +593,12 @@ export default function StallSvgMap({
         isPlaceholder: !actual,
       };
 
-      const merged = actual
-        ? {
-            ...fallback,
-            ...actual,
-            id: actual.id ?? fallback.id,
-            code: actual.code ?? fallback.code,
+          const merged = actual
+            ? {
+                ...fallback,
+                ...actual,
+                id: actual.id ?? fallback.id,
+                code: actual.code ?? fallback.code,
             hall: fallback.hall,
             x: fallback.x,
             y: fallback.y,
@@ -621,11 +621,23 @@ export default function StallSvgMap({
         status = "REQUESTED";
       }
 
+      const normalizedStatus = (status ?? "AVAILABLE").toUpperCase();
+      const isBookedStatus =
+        normalizedStatus === "BOOKED" || normalizedStatus === "ACCEPTED";
+      const isRequestedStatus =
+        normalizedStatus === "REQUESTED" || normalizedStatus === "IN_PROGRESS";
+
+      const displayStatus = isBookedStatus
+        ? "ACCEPTED"
+        : isRequestedStatus
+        ? "REQUESTED"
+        : "AVAILABLE";
+
       return {
         ...merged,
         id: mergedId ?? fallback.id,
-        status,
-        reserved: status === "BOOKED",
+        status: displayStatus,
+        reserved: isBookedStatus,
       };
     });
   }, [stalls, positions, bookedLookup, inProgressLookup]);
@@ -704,9 +716,12 @@ export default function StallSvgMap({
           {normalizedStalls.map((stall, i) => {
             if (!stall) return null;
 
-            const isBooked = (stall.status ?? "").toUpperCase() === "BOOKED";
+            const normalizedStatus = (stall.status ?? "").toUpperCase();
+            const isBooked =
+              normalizedStatus === "BOOKED" || normalizedStatus === "ACCEPTED";
             const isRequested =
-              (stall.status ?? "").toUpperCase() === "REQUESTED";
+              normalizedStatus === "REQUESTED" ||
+              normalizedStatus === "IN_PROGRESS";
             // const isSelected = Boolean(selectedIds?.has?.(stall.id));
             const isPlaceholder = Boolean(stall.isPlaceholder);
             // const isUnavailable = isBooked || isRequested || isPlaceholder;

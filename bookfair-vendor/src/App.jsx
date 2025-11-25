@@ -63,6 +63,7 @@ export default function App() {
         <Route element={<Shell/>}>
           <Route path="/" element={<Protected><Dashboard/></Protected>} />
           <Route path="/reserved" element={<Protected><Reserved/></Protected>} />
+          <Route path="/payment-success" element={<Protected><PaymentSuccess/></Protected>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace/>}/>
       </Routes>
